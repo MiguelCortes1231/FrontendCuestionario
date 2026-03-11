@@ -1,0 +1,36 @@
+export const tokens = {
+  primary: {
+    main: '#6C3841',
+    light: '#8b5b63',
+    dark: '#4e2229',
+    contrastText: '#ffffff',
+  },
+  secondary: {
+    main: '#A98C62',
+    light: '#c0a57a',
+    dark: '#7d6848',
+    contrastText: '#ffffff',
+  },
+  success: '#1f8f55',
+  warning: '#d29922',
+  error: '#c24141',
+  info: '#2563eb',
+  grey: {
+    50: '#faf7f7',
+    100: '#f4efef',
+    200: '#e7dddd',
+    300: '#d7c9cb',
+    400: '#b59ba0',
+    500: '#8a6e74',
+    600: '#6e555b',
+    700: '#544147',
+    800: '#38292d',
+    900: '#1d1416',
+  },
+  background: {
+    default: '#f6f3f3',
+    paper: '#ffffff',
+    soft: '#f3ebec',
+  },
+  shadowSoft: '0 12px 35px rgba(108, 56, 65, 0.10)',
+};
