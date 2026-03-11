@@ -8,7 +8,7 @@
  * - 🧠 guía el cuestionario por páginas
  * - 💾 persiste el registro terminado
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type SyntheticEvent } from 'react';
 import {
   Alert,
   Box,
@@ -38,8 +38,10 @@ import SearchIcon from '@mui/icons-material/Search';
 import ImageIcon from '@mui/icons-material/Image';
 import BadgeIcon from '@mui/icons-material/Badge';
 import { useNavigate } from 'react-router-dom';
+import ReactCrop, { centerCrop, makeAspectCrop, type Crop, type PixelCrop } from 'react-image-crop';
 import { v4 as uuid } from 'uuid';
 import { toast } from 'react-toastify';
+import 'react-image-crop/dist/ReactCrop.css';
 
 import ReadonlyGeoMap from '../../components/map/ReadonlyGeoMap';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
@@ -96,6 +98,67 @@ const emptyAnswers: SurveyAnswers = {
   observaciones: '',
 };
 
+const INE_ASPECT_RATIO = 1.58;
+
+function createCenteredIneCrop(mediaWidth: number, mediaHeight: number) {
+  return centerCrop(
+    makeAspectCrop(
+      {
+        unit: '%',
+        width: 88,
+      },
+      INE_ASPECT_RATIO,
+      mediaWidth,
+      mediaHeight
+    ),
+    mediaWidth,
+    mediaHeight
+  );
+}
+
+async function createCroppedImageFile(
+  image: HTMLImageElement,
+  crop: PixelCrop,
+  fileName: string
+) {
+  const canvas = document.createElement('canvas');
+  const scaleX = image.naturalWidth / image.width;
+  const scaleY = image.naturalHeight / image.height;
+
+  canvas.width = Math.max(1, Math.floor(crop.width * scaleX));
+  canvas.height = Math.max(1, Math.floor(crop.height * scaleY));
+
+  const ctx = canvas.getContext('2d');
+  if (!ctx) {
+    throw new Error('No se pudo inicializar el canvas para el recorte.');
+  }
+
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(
+    image,
+    crop.x * scaleX,
+    crop.y * scaleY,
+    crop.width * scaleX,
+    crop.height * scaleY,
+    0,
+    0,
+    canvas.width,
+    canvas.height
+  );
+
+  const blob = await new Promise<Blob | null>((resolve) => {
+    canvas.toBlob((value) => resolve(value), 'image/jpeg', 0.95);
+  });
+
+  if (!blob) {
+    throw new Error('No se pudo generar la imagen recortada.');
+  }
+
+  return new File([blob], fileName.replace(/\.[^.]+$/, '') + '-ine.jpg', {
+    type: 'image/jpeg',
+  });
+}
+
 function createEmptyPerson(mode: 'manual' | 'ocr', geo: GeoSnapshot): PersonFormData {
   // 🧍 Fábrica del estado inicial de persona con folio y geo.
   return {
@@ -141,7 +204,14 @@ export default function SurveyNewPage() {
 
   const [ocrFile, setOcrFile] = useState<File | null>(null);
   const [ocrPreview, setOcrPreview] = useState<string>('');
+  const [ocrCroppedFile, setOcrCroppedFile] = useState<File | null>(null);
+  const [ocrCroppedPreview, setOcrCroppedPreview] = useState('');
   const [ocrLoading, setOcrLoading] = useState(false);
+  const [crop, setCrop] = useState<Crop>();
+  const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
+  const [cropApplied, setCropApplied] = useState(false);
+
+  const ocrImageRef = useRef<HTMLImageElement | null>(null);
 
   const user = authStore.getUser();
 
@@ -196,6 +266,21 @@ export default function SurveyNewPage() {
   }, [ocrFile]);
 
   useEffect(() => {
+    // ✂️ Vista previa del recorte final que se usará para OCR.
+    if (!ocrCroppedFile) {
+      setOcrCroppedPreview('');
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(ocrCroppedFile);
+    setOcrCroppedPreview(objectUrl);
+
+    return () => {
+      URL.revokeObjectURL(objectUrl);
+    };
+  }, [ocrCroppedFile]);
+
+  useEffect(() => {
     // 🔄 Garantiza que al tener geo exista también un estado inicial de persona.
     if (!geo) return;
 
@@ -226,6 +311,11 @@ export default function SurveyNewPage() {
     setAnswers(emptyAnswers);
     setOcrFile(null);
     setOcrPreview('');
+    setOcrCroppedFile(null);
+    setOcrCroppedPreview('');
+    setCrop(undefined);
+    setCompletedCrop(undefined);
+    setCropApplied(false);
     setFinishOpen(false);
     toast.info('Encuesta reiniciada para una nueva persona 🔄');
   };
@@ -271,12 +361,57 @@ export default function SurveyNewPage() {
     // 📥 Almacena la imagen seleccionada antes de procesarla.
     if (!file) return;
     setOcrFile(file);
+    setOcrCroppedFile(null);
+    setCrop(undefined);
+    setCompletedCrop(undefined);
+    setCropApplied(false);
     toast.info('Imagen cargada. Ahora pulsa "Escanear INE" para procesarla 🪪');
+  };
+
+  const handleOcrImageLoad = (event: SyntheticEvent<HTMLImageElement>) => {
+    // 🪪 Al cargar la imagen se propone un recorte centrado con proporción de credencial.
+    const { width, height } = event.currentTarget;
+    ocrImageRef.current = event.currentTarget;
+    const nextCrop = createCenteredIneCrop(width, height);
+    setCrop(nextCrop);
+  };
+
+  const handleApplyCrop = async () => {
+    // ✂️ Genera una nueva imagen con solo la credencial visible.
+    if (!ocrFile || !ocrImageRef.current || !completedCrop?.width || !completedCrop?.height) {
+      toast.warning('Ajusta primero el marco para recortar la credencial 🪪');
+      return;
+    }
+
+    try {
+      const croppedFile = await createCroppedImageFile(
+        ocrImageRef.current,
+        completedCrop,
+        ocrFile.name
+      );
+
+      setOcrCroppedFile(croppedFile);
+      setCropApplied(true);
+      toast.success('Recorte aplicado. Ahora se verá solo la credencial ✂️');
+    } catch {
+      toast.error('No se pudo aplicar el recorte de la imagen ❌');
+    }
+  };
+
+  const handleResetCrop = () => {
+    // 🔄 Permite regresar al editor de recorte para afinar el encuadre.
+    setOcrCroppedFile(null);
+    setCropApplied(false);
+    if (ocrImageRef.current) {
+      setCrop(createCenteredIneCrop(ocrImageRef.current.width, ocrImageRef.current.height));
+    }
   };
 
   const handleScanOcr = async () => {
     // 🪪 Ejecuta el pipeline OCR y mapea la respuesta al formulario interno.
-    if (!ocrFile) {
+    let fileToScan = ocrCroppedFile ?? ocrFile;
+
+    if (!fileToScan) {
       toast.warning('Primero selecciona una imagen del INE 📷');
       return;
     }
@@ -289,7 +424,14 @@ export default function SurveyNewPage() {
     try {
       setOcrLoading(true);
 
-      const result = await scanIneAndSplit(ocrFile);
+      // ✂️ Si todavía no existe archivo recortado, se genera automáticamente con el marco actual.
+      if (!ocrCroppedFile && ocrFile && ocrImageRef.current && completedCrop?.width && completedCrop?.height) {
+        fileToScan = await createCroppedImageFile(ocrImageRef.current, completedCrop, ocrFile.name);
+        setOcrCroppedFile(fileToScan);
+        setCropApplied(true);
+      }
+
+      const result = await scanIneAndSplit(fileToScan);
 
       const matchedSection = sections.find(
         (item) =>
@@ -472,7 +614,7 @@ export default function SurveyNewPage() {
                               Captura OCR del INE 🪪
                             </Typography>
                             <Typography color="text.secondary">
-                              Primero selecciona la imagen, revísala en pantalla y después pulsa
+                              Primero selecciona la imagen, encuadra solo la credencial y después pulsa
                               <strong> Escanear INE</strong>.
                             </Typography>
                           </Box>
@@ -506,6 +648,7 @@ export default function SurveyNewPage() {
 
                           {/* 🔍 Disparo manual del análisis OCR */}
                           <Button
+                            color={cropApplied ? 'success' : 'primary'}
                             variant="contained"
                             startIcon={ocrLoading ? <CircularProgress size={18} color="inherit" /> : <SearchIcon />}
                             disabled={!ocrFile || ocrLoading}
@@ -544,17 +687,19 @@ export default function SurveyNewPage() {
                             >
                               <Box>
                                 <Typography sx={{ fontWeight: 800 }}>
-                                  Vista previa del INE 👀
+                                  {cropApplied ? 'Vista final del INE ✨' : 'Ajuste del recorte del INE ✂️'}
                                 </Typography>
                                 <Typography variant="body2" color="text.secondary">
-                                  {ocrFile.name}
+                                  {cropApplied
+                                    ? 'Se usará solo la credencial para el OCR'
+                                    : 'Mueve el marco para dejar fuera mesa, fondo o bordes innecesarios'}
                                 </Typography>
                               </Box>
 
                               <Chip
                                 icon={<BadgeIcon />}
-                                label="Listo para escanear"
-                                color="primary"
+                                label={cropApplied ? 'Recorte aplicado' : 'Ajusta el recorte'}
+                                color={cropApplied ? 'success' : 'primary'}
                                 variant="outlined"
                               />
                             </Box>
@@ -567,21 +712,80 @@ export default function SurveyNewPage() {
                                 bgcolor: '#f7f3f4',
                               }}
                             >
-                              <Box
-                                component="img"
-                                src={ocrPreview}
-                                alt="Vista previa del INE"
-                                sx={{
-                                  width: '100%',
-                                  maxWidth: 520,
-                                  maxHeight: 340,
-                                  objectFit: 'contain',
-                                  borderRadius: 3,
-                                  boxShadow: '0 12px 34px rgba(0,0,0,0.10)',
-                                  border: '1px solid rgba(108,56,65,0.08)',
-                                  bgcolor: 'white',
-                                }}
-                              />
+                              {!cropApplied ? (
+                                <Stack spacing={1.5} alignItems="center" sx={{ width: '100%' }}>
+                                  <Box
+                                    sx={{
+                                      width: '100%',
+                                      maxWidth: 620,
+                                      borderRadius: 4,
+                                      overflow: 'hidden',
+                                      border: '1px solid rgba(108,56,65,0.10)',
+                                      boxShadow: '0 12px 34px rgba(0,0,0,0.08)',
+                                      bgcolor: '#fff',
+                                    }}
+                                  >
+                                    <ReactCrop
+                                      crop={crop}
+                                      onChange={(nextCrop) => setCrop(nextCrop)}
+                                      onComplete={(nextCrop) => setCompletedCrop(nextCrop)}
+                                      aspect={INE_ASPECT_RATIO}
+                                      keepSelection
+                                      ruleOfThirds
+                                    >
+                                      <img
+                                        ref={ocrImageRef}
+                                        src={ocrPreview}
+                                        alt="Recorte del INE"
+                                        onLoad={handleOcrImageLoad}
+                                        style={{
+                                          display: 'block',
+                                          width: '100%',
+                                          maxHeight: '420px',
+                                          objectFit: 'contain',
+                                          background: '#fff',
+                                        }}
+                                      />
+                                    </ReactCrop>
+                                  </Box>
+
+                                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.2}>
+                                    <Button
+                                      variant="contained"
+                                      onClick={handleApplyCrop}
+                                      sx={{ borderRadius: 999, fontWeight: 800 }}
+                                    >
+                                      Aplicar recorte ✂️
+                                    </Button>
+                                  </Stack>
+                                </Stack>
+                              ) : (
+                                <Stack spacing={1.5} alignItems="center" sx={{ width: '100%' }}>
+                                  <Box
+                                    component="img"
+                                    src={ocrCroppedPreview}
+                                    alt="Vista recortada del INE"
+                                    sx={{
+                                      width: '100%',
+                                      maxWidth: 620,
+                                      maxHeight: 340,
+                                      objectFit: 'contain',
+                                      borderRadius: 3,
+                                      boxShadow: '0 12px 34px rgba(0,0,0,0.10)',
+                                      border: '1px solid rgba(108,56,65,0.08)',
+                                      bgcolor: 'white',
+                                    }}
+                                  />
+
+                                  <Button
+                                    variant="outlined"
+                                    onClick={handleResetCrop}
+                                    sx={{ borderRadius: 999, fontWeight: 700 }}
+                                  >
+                                    Ajustar recorte otra vez 🔁
+                                  </Button>
+                                </Stack>
+                              )}
                             </Box>
                           </Box>
                         )}
