@@ -1,3 +1,12 @@
+/**
+ * 🪪 Servicios y utilidades del flujo OCR
+ *
+ * Este módulo concentra:
+ * - llamados a servicios externos de OCR
+ * - separación de nombres
+ * - normalización de datos
+ * - heurísticas de respaldo para no romper el flujo operativo
+ */
 import axios from 'axios';
 
 export type OcrRawResponse = {
@@ -26,16 +35,19 @@ export type SplitNameResponse = OcrRawResponse & {
 };
 
 function normalizeSpaces(value?: string) {
+  // 🧼 Limpia espacios extra para homogenizar respuestas del OCR.
   return String(value ?? '')
     .replace(/\s+/g, ' ')
     .trim();
 }
 
 function cleanColonia(value?: string) {
+  // 🏘️ Algunos OCR anexan el CP al final de la colonia; aquí se depura.
   return normalizeSpaces(value).replace(/\s+\d{5}$/, '').trim();
 }
 
 function normalizeSexo(value?: string) {
+  // 🚻 Traduce abreviaturas y valores frecuentes del OCR a etiquetas de la app.
   const v = normalizeSpaces(value).toUpperCase();
   if (v === 'H' || v === 'HOMBRE') return 'Hombre';
   if (v === 'M' || v === 'MUJER') return 'Mujer';
@@ -43,6 +55,7 @@ function normalizeSexo(value?: string) {
 }
 
 function splitFullNameFallback(fullName?: string) {
+  // 🛟 Estrategia local de respaldo cuando el separador externo no responde.
   const clean = normalizeSpaces(fullName);
   if (!clean) {
     return {
@@ -86,6 +99,7 @@ function splitFullNameFallback(fullName?: string) {
 }
 
 function deriveBirthdateFromClaveElector(clave?: string) {
+  // 🎂 Heurística para derivar fecha desde la clave de elector si el OCR no la entrega.
   const clean = normalizeSpaces(clave).toUpperCase();
   if (clean.length < 10) return '';
 
@@ -106,6 +120,7 @@ function deriveBirthdateFromClaveElector(clave?: string) {
 }
 
 function deriveGenderFromClaveElector(clave?: string) {
+  // 🚻 Heurística de respaldo para sexo a partir de la clave de elector.
   const clean = normalizeSpaces(clave).toUpperCase();
   const gender = clean.slice(13, 14);
   if (gender === 'H') return 'Hombre';
@@ -114,12 +129,14 @@ function deriveGenderFromClaveElector(clave?: string) {
 }
 
 function deriveNamesFromCurp(curp?: string, fullName?: string) {
+  // 🧠 Punto de extensión futuro para reglas más finas basadas en CURP.
   const fallback = splitFullNameFallback(fullName);
   if (!curp) return fallback;
   return fallback;
 }
 
 export async function runOCR(file: File): Promise<OcrRawResponse> {
+  // 📤 Envía la imagen seleccionada al servicio OCR remoto.
   const formData = new FormData();
   formData.append('imagen', file);
 
@@ -138,6 +155,7 @@ export async function runOCR(file: File): Promise<OcrRawResponse> {
 }
 
 export async function splitPersonName(payload: OcrRawResponse): Promise<SplitNameResponse> {
+  // ✂️ Solicita separación de nombre completo en nombres y apellidos.
   const { data } = await axios.post<SplitNameResponse>(
     'https://brmstudio.com.mx/ocr/separar-nombre',
     payload,
@@ -175,6 +193,7 @@ export async function scanIneAndSplit(file: File): Promise<{
   };
   warningMessage?: string;
 }> {
+  // 🔁 Flujo compuesto: OCR → separación de nombre → mapeo a estructura local.
   const ocr = await runOCR(file);
 
   let split: SplitNameResponse | null = null;
@@ -183,6 +202,7 @@ export async function scanIneAndSplit(file: File): Promise<{
   try {
     split = await splitPersonName(ocr);
   } catch {
+    // ⚠️ Si el servicio complementario falla, la captura continúa con fallback local.
     warningMessage =
       'No se pudo separar el nombre con el servicio externo. Se aplicó una separación local de respaldo ⚠️';
   }
@@ -196,6 +216,7 @@ export async function scanIneAndSplit(file: File): Promise<{
   const municipioFromEstado = normalizeSpaces(ocr.estado).split(',')[0]?.trim() ?? '';
 
   const mapped = {
+    // 🧩 Aquí se transforma la respuesta libre del OCR al shape exacto que usa la app.
     nombres: normalizeSpaces(finalNames.nombres) || localFallback.nombres || '',
     apellidoPaterno:
       normalizeSpaces(finalNames.apellido_paterno) || localFallback.apellido_paterno || '',

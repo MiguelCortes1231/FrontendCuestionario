@@ -1,3 +1,12 @@
+/**
+ * 📄 Motor de exportación PDF
+ *
+ * Convierte una porción del DOM en un PDF multipágina respetando bloques lógicos.
+ * La clave del enfoque es:
+ * - renderizar el nodo como imagen por página
+ * - detectar cortes naturales con `data-pdf-block`
+ * - evitar tajazos feos cuando una sección ya no cabe
+ */
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 
@@ -14,10 +23,12 @@ type PageSlice = {
 };
 
 function wait(ms: number) {
+  // ⏱️ Pequeña pausa para permitir estabilización visual antes del render.
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function loadImages(container: HTMLElement): Promise<void[]> {
+  // 🖼️ Garantiza que todas las imágenes del clon estén listas antes del screenshot.
   const images = Array.from(container.querySelectorAll('img'));
 
   return Promise.all(
@@ -33,12 +44,14 @@ function loadImages(container: HTMLElement): Promise<void[]> {
 }
 
 function getElementAbsoluteTop(element: HTMLElement, root: HTMLElement) {
+  // 📐 Calcula la posición vertical absoluta de un bloque dentro del nodo raíz.
   const elRect = element.getBoundingClientRect();
   const rootRect = root.getBoundingClientRect();
   return elRect.top - rootRect.top + root.scrollTop;
 }
 
 function getTopLevelBlocks(root: HTMLElement, pageBlockSelector: string) {
+  // 🧱 Filtra solo bloques de primer nivel para evitar que padre e hijo compitan entre sí.
   return Array.from(root.querySelectorAll<HTMLElement>(pageBlockSelector))
     .filter((el) => el.offsetParent !== null)
     .filter((el) => {
@@ -60,11 +73,13 @@ function buildPageSlices(
   pageContentHeightPx: number,
   pageBlockSelector: string
 ): PageSlice[] {
+  // ✂️ Genera los fragmentos verticales que se convertirán en páginas PDF.
   const blocks = getTopLevelBlocks(root, pageBlockSelector);
 
   const totalHeight = root.scrollHeight;
 
   if (!blocks.length) {
+    // 🪚 Fallback: si no hay bloques declarados, se corta por altura fija.
     const fallbackSlices: PageSlice[] = [];
     let currentTop = 0;
 
@@ -89,6 +104,7 @@ function buildPageSlices(
     const blockBottom = blockTop + blockHeight;
 
     if (blockHeight > pageContentHeightPx) {
+      // 📚 Si un bloque completo no cabe en una página, intentamos dividirlo por sub-bloques.
       if (blockTop > pageTop) {
         slices.push({
           top: pageTop,
@@ -106,6 +122,7 @@ function buildPageSlices(
           }))
         );
       } else {
+        // 🧯 Último recurso: cortar por altura cuando ya no existe granularidad interna.
         let oversizedTop = blockTop;
         while (oversizedTop < blockBottom) {
           const chunkHeight = Math.min(pageContentHeightPx, blockBottom - oversizedTop);
@@ -123,6 +140,7 @@ function buildPageSlices(
     }
 
     if (blockBottom > pageBottom) {
+      // ↪️ Si el bloque actual rebasa la página, se mueve entero al siguiente corte.
       if (blockTop > pageTop) {
         slices.push({
           top: pageTop,
@@ -146,6 +164,7 @@ function buildPageSlices(
 }
 
 function createOffscreenContainer(widthPx: number) {
+  // 👻 Crea un contenedor fuera de pantalla para renderizar cada página sin afectar la UI visible.
   const wrapper = document.createElement('div');
 
   wrapper.style.position = 'fixed';
@@ -167,6 +186,7 @@ export async function exportNodeToPdf(
   filename: string,
   options: ExportPdfOptions = {}
 ) {
+  // 🧮 Convierte proporciones reales del DOM a dimensiones físicas A4 en milímetros.
   const {
     marginMm = 10,
     scale = 2,
@@ -195,6 +215,7 @@ export async function exportNodeToPdf(
   for (let pageIndex = 0; pageIndex < pageSlices.length; pageIndex += 1) {
     const slice = pageSlices[pageIndex];
 
+    // 🪞 Cada página se renderiza a partir de un clon desplazado verticalmente.
     const offscreen = createOffscreenContainer(nodeWidthPx);
 
     const pageViewport = document.createElement('div');
@@ -232,6 +253,7 @@ export async function exportNodeToPdf(
     const imgData = canvas.toDataURL('image/png');
 
     if (pageIndex > 0) {
+      // ➕ A partir de la segunda iteración se agrega una nueva hoja.
       pdf.addPage();
     }
 
@@ -251,5 +273,6 @@ export async function exportNodeToPdf(
     document.body.removeChild(offscreen);
   }
 
+  // 💾 Descarga final del archivo en el navegador.
   pdf.save(filename);
 }

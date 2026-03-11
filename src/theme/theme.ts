@@ -1,8 +1,16 @@
+/**
+ * 🎛️ Configuración del tema MUI
+ *
+ * Aquí se traduce la identidad visual del proyecto a un tema consumible por toda
+ * la interfaz. Esto permite que botones, tarjetas, tipografía y colores tengan
+ * un comportamiento consistente en todas las pantallas 🧠✨
+ */
 import { createTheme } from '@mui/material/styles';
 import { tokens } from './tokens';
 
 export const theme = createTheme({
   palette: {
+    // 🌞 La aplicación trabaja en modo claro con tonos institucionales
     mode: 'light',
     primary: tokens.primary,
     secondary: tokens.secondary,
@@ -20,6 +28,7 @@ export const theme = createTheme({
     },
   },
   typography: {
+    // 🔤 Tipografía con pesos fuertes para una UI más clara en operación
     fontFamily: 'Inter, Roboto, Helvetica, Arial, sans-serif',
     h4: { fontWeight: 900 },
     h5: { fontWeight: 800 },
@@ -28,6 +37,7 @@ export const theme = createTheme({
   },
   shape: { borderRadius: 16 },
   components: {
+    // 🧱 Ajustes visuales por componente para evitar repetir estilos
     MuiCard: {
       styleOverrides: { root: { boxShadow: tokens.shadowSoft, borderRadius: 24 } },
     },

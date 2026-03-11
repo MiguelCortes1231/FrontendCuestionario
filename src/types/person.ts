@@ -1,3 +1,4 @@
+// 📍 Snapshot de ubicación capturada desde el navegador.
 export interface GeoSnapshot {
   latitude: number;
   longitude: number;
@@ -5,6 +6,7 @@ export interface GeoSnapshot {
   capturedAt: string;
 }
 
+// 🪪 Estructura cruda/extendida para interoperar con servicios OCR.
 export interface OCRPersonPayload {
   anio_registro?: string;
   calle?: string;
@@ -27,6 +29,7 @@ export interface OCRPersonPayload {
   nombres?: string;
 }
 
+// 🧍 Modelo principal de persona utilizado durante la captura de encuesta.
 export type PersonFormData = {
   folio: string;
   nombres: string;

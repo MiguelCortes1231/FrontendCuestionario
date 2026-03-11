@@ -1,3 +1,9 @@
+/**
+ * 🧭 Layout principal autenticado
+ *
+ * Proporciona la estructura compartida de navegación para todas las pantallas
+ * internas del sistema.
+ */
 import { useMemo, useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { AppBar, Box, Button, Divider, Drawer, IconButton, List, ListItemButton, ListItemIcon, ListItemText, Stack, Toolbar, Tooltip, Typography, useMediaQuery } from '@mui/material';
@@ -31,10 +37,12 @@ export default function MainLayout() {
     { label: 'Encuestados', to: '/respondents', icon: <GroupIcon /> },
   ], []);
 
+  // 📏 El ancho visible del menú depende del estado colapsado y del breakpoint.
   const currentWidth = collapsed && !isMobile ? drawerCollapsedWidth : drawerWidth;
 
   const content = (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+      {/* 🪪 Branding y datos del usuario */}
       <Box sx={{ p: 2.2, minHeight: 84 }}>
         {collapsed && !isMobile ? (
           <Stack alignItems="center" spacing={1}>
@@ -62,6 +70,7 @@ export default function MainLayout() {
         )}
       </Box>
       <Divider />
+      {/* 🧭 Lista de accesos principales */}
       <List sx={{ flex: 1, p: 1.2 }}>
         {items.map((item) => {
           const button = (
@@ -74,6 +83,7 @@ export default function MainLayout() {
         })}
       </List>
       <Divider />
+      {/* 🚪 Acción de cierre de sesión */}
       <Box sx={{ p: 1.5 }}>
         <Button fullWidth variant={collapsed && !isMobile ? 'text' : 'outlined'} color="inherit" startIcon={<LogoutIcon />} onClick={() => setLogoutOpen(true)} sx={{ justifyContent: collapsed && !isMobile ? 'center' : 'flex-start' }}>
           {!(collapsed && !isMobile) && 'Cerrar sesión'}
@@ -84,17 +94,20 @@ export default function MainLayout() {
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh' }}>
+      {/* 🪟 Barra superior fija */}
       <AppBar position="fixed" elevation={0} sx={{ bgcolor: 'rgba(255,255,255,0.85)', color: 'text.primary', backdropFilter: 'blur(10px)', borderBottom: '1px solid rgba(108,56,65,0.08)', width: { md: `calc(100% - ${currentWidth}px)` }, ml: { md: `${currentWidth}px` } }}>
         <Toolbar>
           <IconButton onClick={() => (isMobile ? setMobileOpen((s) => !s) : setCollapsed((s) => !s))} color="primary"><MenuIcon /></IconButton>
           <Typography sx={{ fontWeight: 900, ml: 1, flex: 1 }}>Encuestas ciudadanas · Contigo Quintana Roo</Typography>
         </Toolbar>
       </AppBar>
+      {/* 📚 Drawer lateral, temporal en móvil y permanente en desktop */}
       <Box component="nav" sx={{ width: { md: currentWidth }, flexShrink: { md: 0 } }}>
         <Drawer variant={isMobile ? 'temporary' : 'permanent'} open={isMobile ? mobileOpen : true} onClose={() => setMobileOpen(false)} ModalProps={{ keepMounted: true }} sx={{ '& .MuiDrawer-paper': { width: currentWidth, transition: 'width .25s ease', borderRight: '1px solid rgba(108,56,65,0.08)', bgcolor: 'background.paper', overflowX: 'hidden' } }}>
           {content}
         </Drawer>
       </Box>
+      {/* 🧩 Aquí se renderiza la ruta hija activa */}
       <Box component="main" sx={{ flexGrow: 1, p: { xs: 2, md: 3 }, mt: 8 }}>
         <Outlet />
       </Box>

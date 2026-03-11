@@ -1,3 +1,9 @@
+/**
+ * 🔐 Pantalla de inicio de sesión
+ *
+ * Recibe credenciales, llama al servicio de autenticación y, en caso exitoso,
+ * abre la experiencia principal del sistema.
+ */
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -27,6 +33,7 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // 🧼 Validación local mínima para evitar requests innecesarios.
     if (!username.trim() || !password.trim()) {
       setError('Debes capturar usuario y contraseña.');
       return;
@@ -35,6 +42,7 @@ export default function LoginPage() {
     try {
       setSubmitting(true);
       setError('');
+      // 🚀 Si el backend valida, el servicio persiste la sesión.
       await login(username.trim(), password);
       toast.success('Sesión iniciada correctamente ✅');
       navigate('/dashboard', { replace: true });
@@ -48,6 +56,7 @@ export default function LoginPage() {
   return (
     <Box
       sx={{
+        // 🌄 Fondo contextual de acceso
         minHeight: '100vh',
         display: 'grid',
         placeItems: 'center',
@@ -102,6 +111,7 @@ export default function LoginPage() {
 
             {error && <Alert severity="error">{error}</Alert>}
 
+            {/* 👤 Campo de usuario */}
             <TextField
               label="Usuario"
               value={username}
@@ -110,6 +120,7 @@ export default function LoginPage() {
               fullWidth
             />
 
+            {/* 🔒 Campo de contraseña */}
             <TextField
               label="Contraseña"
               type="password"
@@ -119,6 +130,7 @@ export default function LoginPage() {
               fullWidth
             />
 
+            {/* ✅ Acción principal de autenticación */}
             <Button
               type="submit"
               variant="contained"

@@ -1,3 +1,9 @@
+/**
+ * 📊 Dashboard principal
+ *
+ * Resume el estado de la operación y sirve como punto de entrada para iniciar
+ * nuevas encuestas o revisar levantamientos existentes.
+ */
 import { Card, CardContent, Grid, Stack, Typography } from '@mui/material';
 import { respondentsStore } from '../../store/respondents.store';
 import { authStore } from '../../store/auth.store';
@@ -12,6 +18,7 @@ export default function DashboardPage() {
         <Typography color="text.secondary">Bienvenido, {user?.nombre}. Desde aquí puedes iniciar encuestas y revisar levantamientos.</Typography>
       </div>
       <Grid container spacing={2}>
+        {/* 📌 Indicadores compactos de estado */}
         {[{ title: 'Encuestas guardadas', value: total }, { title: 'Paginado listo', value: '15 por página' }, { title: 'Modo captura', value: 'Manual + OCR' }].map((card) => (
           <Grid item xs={12} md={4} key={card.title}>
             <Card><CardContent><Typography color="text.secondary">{card.title}</Typography><Typography variant="h4">{card.value}</Typography></CardContent></Card>

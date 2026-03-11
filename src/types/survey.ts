@@ -1,5 +1,6 @@
 import type { PersonFormData } from './person';
 
+// 🧠 Catálogo tipado de respuestas del cuestionario.
 export interface SurveyAnswers {
   hasValidCredential: 'Si' | 'No' | '';
   sexoObservado: 'Hombre' | 'Mujer' | 'Otro' | '';
@@ -20,6 +21,7 @@ export interface SurveyAnswers {
   observaciones: string;
 }
 
+// 📄 Registro completo persistido al terminar una entrevista.
 export interface SurveyRecord {
   id: string;
   createdAt: string;

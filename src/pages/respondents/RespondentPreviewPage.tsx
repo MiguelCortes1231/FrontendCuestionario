@@ -1,3 +1,9 @@
+/**
+ * 👁️ Vista previa de encuesta
+ *
+ * Organiza el registro completo en una presentación clara pensada tanto para
+ * pantalla como para exportación PDF.
+ */
 import { useMemo, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
@@ -32,6 +38,7 @@ type PreviewAnswerItem = {
 };
 
 function formatDateTime(value?: string) {
+  // 🕒 Presenta fechas en formato legible.
   if (!value) return '-';
   try {
     return new Date(value).toLocaleString();
@@ -41,11 +48,13 @@ function formatDateTime(value?: string) {
 }
 
 function safeValue(value: unknown) {
+  // 🧼 Unifica vacíos a un placeholder consistente.
   const text = String(value ?? '').trim();
   return text || '-';
 }
 
 function buildAnswerItems(answers: SurveyAnswers): PreviewAnswerItem[] {
+  // 🧩 Reorganiza las respuestas del modelo a un arreglo renderizable por sección.
   const items: PreviewAnswerItem[] = [
     {
       key: 'hasValidCredential',
@@ -165,6 +174,7 @@ export default function RespondentPreviewPage() {
 
     const items = buildAnswerItems(record.answers);
 
+    // 📚 Orden fijo para mantener coherencia visual y narrativa.
     const sectionOrder = [
       'I. Introducción y filtros',
       'II. Evaluación de figuras públicas',
@@ -233,6 +243,7 @@ export default function RespondentPreviewPage() {
         >
           <CardContent sx={{ p: { xs: 2, md: 4 } }}>
             <Stack spacing={3}>
+              {/* 🏷️ Encabezado institucional */}
               <Box
                data-pdf-block
                 sx={{
@@ -277,6 +288,7 @@ export default function RespondentPreviewPage() {
               </Box>
 
               <Grid container spacing={2}>
+                {/* 👨‍💼 Resumen administrativo */}
                 <Grid item xs={12} md={6}>
                   <Card
                     variant="outlined"
@@ -336,6 +348,7 @@ export default function RespondentPreviewPage() {
                   </Card>
                 </Grid>
 
+                {/* 🧍 Ficha principal de la persona */}
                 <Grid item xs={12} md={6}>
                   <Card
                     variant="outlined"
@@ -430,6 +443,7 @@ export default function RespondentPreviewPage() {
                 </Grid>
               </Grid>
 
+              {/* 🗺️ Mapa del levantamiento */}
               <Card
                 variant="outlined"
                 data-pdf-block
@@ -451,6 +465,7 @@ export default function RespondentPreviewPage() {
                 </CardContent>
               </Card>
 
+              {/* 🧠 Respuestas agrupadas por bloques temáticos */}
               <Card
                 variant="outlined"
                 sx={{ borderRadius: 4, borderColor: 'rgba(108,56,65,0.14)' }}
@@ -468,6 +483,7 @@ export default function RespondentPreviewPage() {
 
                     {answerGroups.map((group) => (
                       <Stack key={group.title} spacing={2} data-pdf-block>
+                        {/* 🏷️ Título de sección */}
                         <Box
                           sx={{
                             px: 1.8,
@@ -488,6 +504,7 @@ export default function RespondentPreviewPage() {
                               key={`${group.title}-${item.key}-${index}`}
                               data-pdf-block
                             >
+                              {/* ❓ Tarjeta de pregunta individual */}
                               <Box
                                 sx={{
                                   p: 2,

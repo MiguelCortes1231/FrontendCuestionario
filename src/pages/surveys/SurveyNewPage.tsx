@@ -1,3 +1,13 @@
+/**
+ * 📝 Pantalla de captura de encuesta
+ *
+ * Este módulo concentra el flujo operativo completo del levantamiento:
+ * - 📍 toma la ubicación actual
+ * - 🧍 captura datos de la persona
+ * - 🪪 permite OCR del INE
+ * - 🧠 guía el cuestionario por páginas
+ * - 💾 persiste el registro terminado
+ */
 import { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
@@ -25,8 +35,6 @@ import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import SaveIcon from '@mui/icons-material/Save';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import SearchIcon from '@mui/icons-material/Search';
-import ListAltIcon from '@mui/icons-material/ListAlt';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ImageIcon from '@mui/icons-material/Image';
 import BadgeIcon from '@mui/icons-material/Badge';
 import { useNavigate } from 'react-router-dom';
@@ -48,6 +56,7 @@ import { scanIneAndSplit } from '../../services/ocr.service';
 import { getSecciones } from '../../services/sections.service';
 
 const surveyPages = [
+  // 📚 Definición de páginas temáticas para dividir el cuestionario.
   {
     title: 'Filtros e introducción',
     fields: ['hasValidCredential', 'sexoObservado', 'rangoEdad', 'escolaridad'],
@@ -67,6 +76,7 @@ const surveyPages = [
 ] as const;
 
 const emptyAnswers: SurveyAnswers = {
+  // 🧼 Estado base reutilizable en alta nueva y reinicios.
   hasValidCredential: '',
   sexoObservado: '',
   rangoEdad: '',
@@ -87,6 +97,7 @@ const emptyAnswers: SurveyAnswers = {
 };
 
 function createEmptyPerson(mode: 'manual' | 'ocr', geo: GeoSnapshot): PersonFormData {
+  // 🧍 Fábrica del estado inicial de persona con folio y geo.
   return {
     folio: `FOL-${Date.now()}`,
     nombres: '',
@@ -135,6 +146,7 @@ export default function SurveyNewPage() {
   const user = authStore.getUser();
 
   useEffect(() => {
+    // 📍 Intenta capturar ubicación apenas se abre la pantalla.
     getBrowserLocation()
       .then((currentGeo) => {
         setGeo(currentGeo);
@@ -150,6 +162,7 @@ export default function SurveyNewPage() {
 
     (async () => {
       try {
+        // 🗂️ Carga de catálogo oficial de secciones.
         setSectionsLoading(true);
         const data = await getSecciones();
         if (!alive) return;
@@ -168,6 +181,7 @@ export default function SurveyNewPage() {
   }, []);
 
   useEffect(() => {
+    // 🖼️ Crea una vista previa temporal para la imagen del OCR.
     if (!ocrFile) {
       setOcrPreview('');
       return;
@@ -182,6 +196,7 @@ export default function SurveyNewPage() {
   }, [ocrFile]);
 
   useEffect(() => {
+    // 🔄 Garantiza que al tener geo exista también un estado inicial de persona.
     if (!geo) return;
 
     setPerson((prev) => {
@@ -191,14 +206,17 @@ export default function SurveyNewPage() {
   }, [geo, personMode]);
 
   const completePerson = useMemo(() => {
+    // ✅ Regla mínima para desbloquear la pestaña de encuesta.
     return !!person && !!person.nombres && !!person.apellidoPaterno && !!person.seccion;
   }, [person]);
 
   const selectedSection = useMemo(() => {
+    // 🎯 Resuelve la sección seleccionada con su metadata completa.
     return sections.find((section) => String(section.IdSeccion) === String(person?.seccion)) ?? null;
   }, [sections, person?.seccion]);
 
   const handleStartNew = () => {
+    // ♻️ Reinicia toda la entrevista para comenzar otra captura limpia.
     if (!geo) return;
 
     setTab(0);
@@ -213,6 +231,7 @@ export default function SurveyNewPage() {
   };
 
   const updatePersonField = (field: keyof PersonFormData, value: string | GeoSnapshot) => {
+    // ✍️ Setter genérico para campos de persona.
     if (!geo) return;
 
     setPerson((prev) => ({
@@ -222,6 +241,7 @@ export default function SurveyNewPage() {
   };
 
   const handleChangeMode = (mode: 'manual' | 'ocr') => {
+    // 🔁 Alterna entre captura tradicional y captura asistida por OCR.
     setPersonMode(mode);
 
     if (!geo) return;
@@ -234,6 +254,7 @@ export default function SurveyNewPage() {
   };
 
   const handleSelectSection = (sectionId: string) => {
+    // 🗂️ Completa municipio cuando una sección del catálogo coincide.
     const matched = sections.find((item) => String(item.IdSeccion) === String(sectionId));
 
     setPerson((prev) => {
@@ -247,12 +268,14 @@ export default function SurveyNewPage() {
   };
 
   const handlePickOcrFile = (file?: File | null) => {
+    // 📥 Almacena la imagen seleccionada antes de procesarla.
     if (!file) return;
     setOcrFile(file);
     toast.info('Imagen cargada. Ahora pulsa "Escanear INE" para procesarla 🪪');
   };
 
   const handleScanOcr = async () => {
+    // 🪪 Ejecuta el pipeline OCR y mapea la respuesta al formulario interno.
     if (!ocrFile) {
       toast.warning('Primero selecciona una imagen del INE 📷');
       return;
@@ -310,6 +333,7 @@ export default function SurveyNewPage() {
   };
 
   const handleSave = () => {
+    // 💾 Construye y persiste el registro final de la encuesta.
     if (!person || !geo) return;
 
     const now = new Date().toISOString();
@@ -341,6 +365,7 @@ export default function SurveyNewPage() {
 
   return (
     <>
+      {/* 🪪 Overlay especializado para el proceso OCR */}
       <OcrScannerOverlay
         open={ocrLoading}
         title="Escaneando credencial..."
@@ -363,6 +388,7 @@ export default function SurveyNewPage() {
           <Alert severity="warning">Permite la geolocalización para continuar.</Alert>
         )}
 
+        {/* 🪜 Paso macro del flujo: alta y cuestionario */}
         <Card>
           <CardContent>
             <Stepper activeStep={tab} alternativeLabel>
@@ -375,6 +401,7 @@ export default function SurveyNewPage() {
           </CardContent>
         </Card>
 
+        {/* 🧭 Contenedor maestro de la captura */}
         <Card>
           <CardContent>
             <Tabs value={tab} onChange={(_, value) => setTab(value)}>
@@ -386,6 +413,7 @@ export default function SurveyNewPage() {
 
             {tab === 0 && geo && (
               <Stack spacing={2.5}>
+                {/* 🎛️ Barra de acciones de la etapa de persona */}
                 <Stack
                   direction={{ xs: 'column', md: 'row' }}
                   spacing={1.2}
@@ -436,6 +464,7 @@ export default function SurveyNewPage() {
                   >
                     <CardContent>
                       <Stack spacing={2.2}>
+                        {/* 🪪 Panel visual del flujo OCR */}
                         <Stack direction="row" spacing={1.2} alignItems="center">
                           <CameraAltIcon sx={{ color: '#6C3841' }} />
                           <Box>
@@ -455,6 +484,7 @@ export default function SurveyNewPage() {
                           alignItems={{ xs: 'stretch', md: 'center' }}
                           justifyContent="space-between"
                         >
+                          {/* 📤 Selección de imagen desde el dispositivo */}
                           <Button
                             component="label"
                             variant="outlined"
@@ -474,6 +504,7 @@ export default function SurveyNewPage() {
                             />
                           </Button>
 
+                          {/* 🔍 Disparo manual del análisis OCR */}
                           <Button
                             variant="contained"
                             startIcon={ocrLoading ? <CircularProgress size={18} color="inherit" /> : <SearchIcon />}
@@ -560,6 +591,7 @@ export default function SurveyNewPage() {
                 )}
 
                 <Grid container spacing={2}>
+                  {/* 🧍 Formulario de datos personales */}
                   <Grid item xs={12} md={4}>
                     <TextField
                       label="Folio"
@@ -731,6 +763,7 @@ export default function SurveyNewPage() {
                 </Grid>
 
                 <Stack direction="row" justifyContent="flex-end">
+                  {/* ➡️ Avance a la siguiente etapa */}
                   <Button
                     variant="contained"
                     disabled={!completePerson}
@@ -745,6 +778,7 @@ export default function SurveyNewPage() {
 
             {tab === 1 && (
               <Stack spacing={2.5}>
+                {/* 🧠 Encabezado contextual del cuestionario */}
                 <Stack
                   direction={{ xs: 'column', md: 'row' }}
                   justifyContent="space-between"
@@ -771,7 +805,9 @@ export default function SurveyNewPage() {
                 </Stack>
 
                 {page === 1 && (
-                  <Grid container spacing={2}>
+                  <>
+                    {/* 1️⃣ Filtros e introducción */}
+                    <Grid container spacing={2}>
                     <Grid item xs={12} md={6}>
                       <TextField
                         select
@@ -846,11 +882,14 @@ export default function SurveyNewPage() {
                         ))}
                       </TextField>
                     </Grid>
-                  </Grid>
+                    </Grid>
+                  </>
                 )}
 
                 {page === 2 && (
-                  <Grid container spacing={2}>
+                  <>
+                    {/* 2️⃣ Reconocimiento de figuras públicas */}
+                    <Grid container spacing={2}>
                     <Grid item xs={12} md={4}>
                       <TextField
                         select
@@ -926,10 +965,13 @@ export default function SurveyNewPage() {
                         ))}
                       </TextField>
                     </Grid>
-                  </Grid>
+                    </Grid>
+                  </>
                 )}
 
                 {page === 3 && (
+                  <>
+                    {/* 3️⃣ Desempeño y percepción */}
                   <Grid container spacing={2}>
                     <Grid item xs={12}>
                       <TextField
@@ -998,9 +1040,12 @@ export default function SurveyNewPage() {
                       </TextField>
                     </Grid>
                   </Grid>
+                  </>
                 )}
 
                 {page === 4 && (
+                  <>
+                    {/* 4️⃣ Problemáticas y cierre */}
                   <Grid container spacing={2}>
                     <Grid item xs={12} md={6}>
                       <TextField
@@ -1101,6 +1146,7 @@ export default function SurveyNewPage() {
                       />
                     </Grid>
                   </Grid>
+                  </>
                 )}
 
                 <Stack

@@ -1,3 +1,14 @@
+/**
+ * 🎨 Tokens de diseño base
+ *
+ * Este objeto concentra la identidad visual del sistema:
+ * - colores principales institucionales
+ * - grises de apoyo
+ * - fondos
+ * - sombras reutilizables
+ *
+ * La idea es que el tema consuma estos valores para evitar números mágicos.
+ */
 export const tokens = {
   primary: {
     main: '#6C3841',

@@ -9,7 +9,6 @@
  * ✅ No reemplaza el loader global general
  */
 
-import React from "react";
 import { Backdrop, Box, Fade, Typography } from "@mui/material";
 import { keyframes } from "@mui/system";
 
