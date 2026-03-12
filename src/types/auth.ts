@@ -5,6 +5,17 @@ export interface AuthUser {
   nombre: string;
 }
 
+// 🔐 Claims básicos del JWT necesarios para validar la sesión en frontend.
+export interface JwtPayload {
+  iss?: string;
+  iat?: number;
+  exp?: number;
+  nbf?: number;
+  jti?: string;
+  sub?: string;
+  prv?: string;
+}
+
 // 🔐 Respuesta esperada del endpoint de login.
 export interface LoginResponse {
   token: string;

@@ -4,8 +4,8 @@
  * Recibe credenciales, llama al servicio de autenticación y, en caso exitoso,
  * abre la experiencia principal del sistema.
  */
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Alert,
   Box,
@@ -20,15 +20,29 @@ import {
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import HowToVoteIcon from '@mui/icons-material/HowToVote';
 import { login } from '../../services/auth.service';
+import { authStore } from '../../store/auth.store';
 import { toast } from 'react-toastify';
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const expiredReason = useMemo(
+    () => new URLSearchParams(location.search).get('reason') === 'expired',
+    [location.search]
+  );
+
+  useEffect(() => {
+    if (!expiredReason) return;
+
+    authStore.clear();
+    setError('Tu sesión expiró. Ingresa nuevamente para continuar.');
+    toast.warning('La sesión expiró. Vuelve a iniciar sesión.');
+  }, [expiredReason]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -109,7 +123,7 @@ export default function LoginPage() {
 
             <Divider />
 
-            {error && <Alert severity="error">{error}</Alert>}
+            {error && <Alert severity={expiredReason ? 'warning' : 'error'}>{error}</Alert>}
 
             {/* 👤 Campo de usuario */}
             <TextField

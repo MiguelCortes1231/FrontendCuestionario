@@ -9,6 +9,7 @@
 import axios from 'axios';
 import { authStore } from '../store/auth.store';
 import { loadingService } from './loading.service';
+import { expireSession } from './auth.service';
 
 export const api = axios.create({
   // 🔧 Puede venir de variables de entorno o usar un fallback productivo conocido.
@@ -17,9 +18,15 @@ export const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
+  const token = authStore.getToken();
+
+  if (token && !authStore.hasActiveSession()) {
+    expireSession();
+    return Promise.reject(new Error('SESSION_EXPIRED'));
+  }
+
   // ⏳ Cada request activa el overlay global.
   loadingService.show();
-  const token = authStore.getToken();
   if (token) {
     // 🔐 Si existe token, se envía en Authorization.
     config.headers.Authorization = `Bearer ${token}`;
@@ -36,6 +43,11 @@ api.interceptors.response.use(
   (error) => {
     // ❌ Aun con error se debe ocultar el loader para no congelar la UI.
     loadingService.hide();
+
+    if (error?.response?.status === 401) {
+      expireSession();
+    }
+
     return Promise.reject(error);
   },
 );
