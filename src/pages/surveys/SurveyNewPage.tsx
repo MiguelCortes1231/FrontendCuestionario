@@ -130,6 +130,23 @@ const surveyGridSx = {
   },
 } as const;
 
+const personGridSx = {
+  width: '100%',
+  margin: 0,
+  pr: { xs: 1.5, md: 4, lg: 5.5 },
+  '& .MuiGrid-item': {
+    display: 'flex',
+  },
+  '& .MuiFormControl-root': {
+    width: '100%',
+  },
+  '& .MuiOutlinedInput-root': {
+    borderRadius: 3,
+    backgroundColor: '#fff',
+    minHeight: 62,
+  },
+} as const;
+
 function createCenteredIneCrop(mediaWidth: number, mediaHeight: number) {
   return centerCrop(
     makeAspectCrop(
@@ -824,7 +841,13 @@ export default function SurveyNewPage() {
                   </Card>
                 )}
 
-                <Grid container spacing={2}>
+                <Box sx={{ px: { xs: 0.5, md: 1.5 } }}>
+                  <Grid
+                    container
+                    rowSpacing={{ xs: 2.5, md: 3 }}
+                    columnSpacing={{ xs: 0, md: 3.5, lg: 4 }}
+                    sx={personGridSx}
+                  >
                   {/* 🧍 Formulario de datos personales */}
                   <Grid item xs={12} md={4}>
                     <TextField
@@ -994,7 +1017,8 @@ export default function SurveyNewPage() {
                       fullWidth
                     />
                   </Grid>
-                </Grid>
+                  </Grid>
+                </Box>
 
                 <Stack direction="row" justifyContent="flex-end">
                   {/* ➡️ Avance a la siguiente etapa */}
