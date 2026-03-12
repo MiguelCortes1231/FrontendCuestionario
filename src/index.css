@@ -1,3 +1,17 @@
+/*
+ * 🌍 Estilos globales del proyecto
+ * ---------------------------------------------------
+ * Aquí se define la base visual más transversal de toda la aplicación:
+ *
+ * ✅ tipografía global
+ * ✅ color de fondo general
+ * ✅ sizing universal con `box-sizing`
+ * ✅ altura mínima para `html`, `body` y `#root`
+ * ✅ comportamiento del contenedor Leaflet
+ *
+ * 🎯 Este archivo funciona como piso visual común antes de que MUI
+ * y el tema institucional terminen de decorar cada pantalla.
+ */
 :root {
   font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   color: #38292d;

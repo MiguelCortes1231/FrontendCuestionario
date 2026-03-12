@@ -1,3 +1,21 @@
+/**
+ * 📊 Dashboard estratégico del sistema
+ * ---------------------------------------------------
+ * Esta pantalla es la capa de lectura ejecutiva del proyecto.
+ *
+ * Aquí no capturamos datos: aquí los interpretamos 🧠✨
+ *
+ * ¿Qué hace este archivo?
+ * - 📈 resume el volumen de entrevistas
+ * - 🗓️ organiza datos por año y por mes
+ * - 🏙️ agrupa por municipio
+ * - 🗂️ mide cobertura de secciones
+ * - 📍 pinta puntos geolocalizados en mapa
+ * - 🎨 presenta todo con una estética institucional y analítica
+ *
+ * En otras palabras:
+ * este módulo transforma registros crudos en información útil para operación.
+ */
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -71,6 +89,7 @@ const MONTH_LABELS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'S
 const QUINTANA_ROO_CENTER: [number, number] = [19.1637, -88.7320];
 
 function normalizeText(value: unknown) {
+  // 🧼 Normaliza texto para hacer comparaciones estables entre municipios.
   return String(value ?? '')
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
@@ -81,6 +100,7 @@ function normalizeText(value: unknown) {
 }
 
 function normalizeMunicipalityName(value: string) {
+  // 🏷️ Unifica variantes para que el dashboard no parta el mismo municipio en dos etiquetas.
   const normalized = normalizeText(value);
 
   if (!normalized) return '';
@@ -100,6 +120,7 @@ function normalizeMunicipalityName(value: string) {
 }
 
 function safeDate(value?: string) {
+  // 🕒 Convierte fechas potencialmente inválidas en un objeto usable o `null`.
   if (!value) return null;
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
@@ -124,6 +145,7 @@ function formatPercent(value: number) {
 }
 
 function getSectionKey(rawSection: string) {
+  // 🔢 Intenta dejar la sección en una forma homogénea para agrupar correctamente.
   const clean = String(rawSection ?? '').trim();
   if (!clean) return '';
 
@@ -132,6 +154,7 @@ function getSectionKey(rawSection: string) {
 }
 
 function resolveMunicipality(record: SurveyRecord, sectionMap: Map<string, string>) {
+  // 🧭 Primero intenta usar el municipio guardado; si no existe, lo infiere desde la sección.
   const direct = normalizeMunicipalityName(record.person.municipio);
   if (direct) return direct;
 
@@ -140,6 +163,7 @@ function resolveMunicipality(record: SurveyRecord, sectionMap: Map<string, strin
 }
 
 function getGeoPoint(record: SurveyRecord, municipio: string): GeoPoint | null {
+  // 📍 Solo devuelve un punto si la encuesta realmente tiene coordenadas válidas.
   const latitude = record.person.geo?.latitude;
   const longitude = record.person.geo?.longitude;
 
@@ -161,6 +185,7 @@ function MapAutoBounds({ points }: { points: GeoPoint[] }) {
   const map = useMap();
 
   useEffect(() => {
+    // 🗺️ Ajusta automáticamente el encuadre del mapa para que siempre se vean los puntos disponibles.
     if (!points.length) {
       map.setView(QUINTANA_ROO_CENTER, 7);
       return;
@@ -511,6 +536,8 @@ export default function DashboardPage() {
   );
 
   const dashboard = useMemo(() => {
+    // 🧠 Este bloque es el corazón analítico:
+    // toma la lista completa de encuestas y deriva todas las métricas visibles.
     const currentDate = new Date();
     const currentYear = currentDate.getFullYear();
     const currentMonth = currentDate.getMonth();

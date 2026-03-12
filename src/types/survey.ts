@@ -1,3 +1,17 @@
+/**
+ * 🧠 Tipos del dominio "encuesta"
+ * ---------------------------------------------------
+ * Este archivo modela dos capas:
+ *
+ * 1. respuestas del cuestionario
+ * 2. registro final persistido de una entrevista
+ *
+ * 🎯 Gracias a estos tipos, la app puede separar claramente:
+ * - quién es la persona
+ * - qué contestó
+ * - cuándo se entrevistó
+ * - quién levantó la información
+ */
 import type { PersonFormData } from './person';
 
 // 🧠 Catálogo tipado de respuestas del cuestionario.

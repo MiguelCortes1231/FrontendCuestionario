@@ -1,8 +1,21 @@
+/**
+ * 💬 Utilidades de contacto
+ * ---------------------------------------------------
+ * Este módulo encapsula transformaciones pequeñas pero muy útiles
+ * alrededor del teléfono del ciudadano.
+ *
+ * ¿Qué resuelve?
+ * - limpiar dígitos
+ * - formatear para mostrar bonito
+ * - construir enlaces directos a WhatsApp
+ */
 function normalizePhoneDigits(phone?: string) {
+  // 🧼 Elimina espacios, guiones y cualquier carácter no numérico.
   return String(phone ?? '').replace(/\D/g, '');
 }
 
 export function buildWhatsAppUrl(phone?: string): string | null {
+  // 💬 Construye una URL directa para abrir chat en WhatsApp si el número es usable.
   const digits = normalizePhoneDigits(phone);
   if (!digits) return null;
 
@@ -12,6 +25,7 @@ export function buildWhatsAppUrl(phone?: string): string | null {
 }
 
 export function formatPhone(phone?: string) {
+  // ☎️ Devuelve una versión más legible para tabla, vista previa y tarjetas.
   const digits = normalizePhoneDigits(phone);
   if (!digits) return '-';
 

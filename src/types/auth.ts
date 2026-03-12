@@ -1,3 +1,12 @@
+/**
+ * 🔐 Tipos del dominio de autenticación
+ * ---------------------------------------------------
+ * Este archivo describe las formas mínimas de datos que el frontend
+ * necesita para trabajar con login, sesión y JWT.
+ *
+ * 🎯 La idea es que las pantallas y servicios compartan un mismo contrato
+ * y no anden usando objetos "sueltos" o ambiguos.
+ */
 // 👤 Representa al usuario autenticado que la app necesita para UI y sesión.
 export interface AuthUser {
   id: number;

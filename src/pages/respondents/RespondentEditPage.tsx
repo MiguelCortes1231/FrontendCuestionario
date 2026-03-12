@@ -1,3 +1,15 @@
+/**
+ * ✏️ Edición básica del encuestado
+ * ---------------------------------------------------
+ * Esta pantalla existe para corregir datos de alta de la persona
+ * sin alterar las respuestas de la encuesta.
+ *
+ * ✅ Se puede ajustar información básica del ciudadano
+ * ❌ No se modifican respuestas ni trazabilidad de levantamiento
+ *
+ * Esto ayuda a mantener integridad operativa mientras se corrigen
+ * errores de captura como nombre, teléfono o domicilio.
+ */
 import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
@@ -51,6 +63,7 @@ export default function RespondentEditPage() {
   }
 
   const updateField = (field: keyof PersonFormData, value: string) => {
+    // ✍️ Setter simple y controlado para no duplicar lógica de edición en cada input.
     setPerson((prev) => (prev ? { ...prev, [field]: value } : prev));
   };
 

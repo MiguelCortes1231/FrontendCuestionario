@@ -1,3 +1,16 @@
+/**
+ * 🧍 Tipos del dominio "persona"
+ * ---------------------------------------------------
+ * Aquí vive el modelo más importante del alta del ciudadano.
+ *
+ * Este archivo define:
+ * - 📍 snapshot de geolocalización
+ * - 🪪 payload OCR crudo/intermedio
+ * - 👤 formulario tipado de persona ya listo para encuesta
+ *
+ * Es una de las piezas que más conecta con el mundo real:
+ * identidad, domicilio, sección y ubicación.
+ */
 // 📍 Snapshot de ubicación capturada desde el navegador.
 export interface GeoSnapshot {
   latitude: number;

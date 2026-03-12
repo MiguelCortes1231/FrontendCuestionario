@@ -1,4 +1,15 @@
+/**
+ * 🗺️ Utilidades para Google Maps
+ * ---------------------------------------------------
+ * Este archivo transforma coordenadas en URLs utilizables.
+ *
+ * Se usa para:
+ * - abrir el punto entrevistado en otra pestaña
+ * - dar trazabilidad territorial al equipo
+ * - conectar rápido registro ↔ mapa real
+ */
 function isValidCoord(value?: number) {
+  // ✅ Verifica que la coordenada sea numérica y finita.
   return typeof value === 'number' && Number.isFinite(value);
 }
 

@@ -1,3 +1,19 @@
+/*
+ * 🎨 Estilos base heredados del scaffold inicial
+ * ---------------------------------------------------
+ * Este archivo conserva utilidades visuales sencillas del arranque del proyecto.
+ *
+ * 🧠 Nota importante:
+ * La mayor parte de la identidad visual real vive hoy en:
+ * - `src/index.css`
+ * - `src/theme/tokens.ts`
+ * - `src/theme/theme.ts`
+ *
+ * Aun así, este archivo sigue aportando:
+ * - contenedor raíz
+ * - estilos de logo de ejemplo
+ * - animación básica
+ */
 #root {
   max-width: 1280px;
   margin: 0 auto;
