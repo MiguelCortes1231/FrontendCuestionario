@@ -99,6 +99,36 @@ const emptyAnswers: SurveyAnswers = {
 };
 
 const INE_ASPECT_RATIO = 1.58;
+const surveyStepCardSx = {
+  borderRadius: 4,
+  border: '1px solid rgba(108,56,65,0.12)',
+  background: 'linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(248,243,244,0.92) 100%)',
+  boxShadow: '0 12px 30px rgba(108,56,65,0.06)',
+} as const;
+
+const surveyStepCardContentSx = {
+  p: { xs: 2, md: 3.5 },
+  pr: { xs: 2, md: 4.5 },
+} as const;
+
+const surveyGridSx = {
+  width: '100%',
+  margin: 0,
+  '& .MuiGrid-item': {
+    display: 'flex',
+  },
+  '& .MuiFormControl-root': {
+    width: '100%',
+  },
+  '& .MuiOutlinedInput-root': {
+    borderRadius: 3,
+    backgroundColor: '#fff',
+    minHeight: 62,
+  },
+  '& .MuiInputLabel-root': {
+    fontWeight: 600,
+  },
+} as const;
 
 function createCenteredIneCrop(mediaWidth: number, mediaHeight: number) {
   return centerCrop(
@@ -981,18 +1011,20 @@ export default function SurveyNewPage() {
             )}
 
             {tab === 1 && (
-              <Stack spacing={2.5}>
+              <Stack spacing={3}>
                 {/* 🧠 Encabezado contextual del cuestionario */}
                 <Stack
                   direction={{ xs: 'column', md: 'row' }}
                   justifyContent="space-between"
-                  spacing={1}
+                  spacing={1.5}
+                  alignItems={{ xs: 'stretch', md: 'flex-start' }}
+                  sx={{ px: { xs: 0.5, md: 1.5 }, pt: 0.5 }}
                 >
                   <Box>
-                    <Typography variant="h6" sx={{ fontWeight: 800 }}>
+                    <Typography variant="h5" sx={{ fontWeight: 900 }}>
                       Encuesta ciudadana
                     </Typography>
-                    <Typography color="text.secondary">
+                    <Typography color="text.secondary" sx={{ fontSize: { xs: '1rem', md: '1.15rem' } }}>
                       Página {page} de {surveyPages.length}: {surveyPages[page - 1].title}
                     </Typography>
                   </Box>
@@ -1002,17 +1034,28 @@ export default function SurveyNewPage() {
                     variant="outlined"
                     startIcon={<RestartAltIcon />}
                     onClick={() => setCancelOpen(true)}
-                    sx={{ borderRadius: 999 }}
+                    sx={{ borderRadius: 999, alignSelf: { xs: 'flex-start', md: 'auto' } }}
                   >
                     Cancelar entrevista
                   </Button>
                 </Stack>
 
                 {page === 1 && (
-                  <>
+                  <Box sx={{ px: { xs: 0.5, md: 1.5 } }}>
+                    <Card sx={surveyStepCardSx}>
+                      <CardContent sx={surveyStepCardContentSx}>
+                        <Stack spacing={2.2}>
+                          <Box>
+                            <Typography variant="subtitle1" sx={{ fontWeight: 800, color: '#6C3841' }}>
+                              Filtros e introducción
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              Esta primera página valida datos básicos del entrevistado. Dejamos más aire entre preguntas para facilitar captura rápida en campo.
+                            </Typography>
+                          </Box>
                     {/* 1️⃣ Filtros e introducción */}
-                    <Grid container spacing={2}>
-                    <Grid item xs={12} md={6}>
+                    <Grid container rowSpacing={{ xs: 2.5, md: 3 }} columnSpacing={0} sx={surveyGridSx}>
+                    <Grid item xs={12}>
                       <TextField
                         select
                         label="1. Credencial vigente"
@@ -1030,7 +1073,7 @@ export default function SurveyNewPage() {
                       </TextField>
                     </Grid>
 
-                    <Grid item xs={12} md={6}>
+                    <Grid item xs={12}>
                       <TextField
                         select
                         label="2. Sexo observado"
@@ -1048,7 +1091,7 @@ export default function SurveyNewPage() {
                       </TextField>
                     </Grid>
 
-                    <Grid item xs={12} md={6}>
+                    <Grid item xs={12}>
                       <TextField
                         select
                         label="3. Rango de edad"
@@ -1064,7 +1107,7 @@ export default function SurveyNewPage() {
                       </TextField>
                     </Grid>
 
-                    <Grid item xs={12} md={6}>
+                    <Grid item xs={12}>
                       <TextField
                         select
                         label="4. Escolaridad"
@@ -1087,14 +1130,28 @@ export default function SurveyNewPage() {
                       </TextField>
                     </Grid>
                     </Grid>
-                  </>
+                        </Stack>
+                      </CardContent>
+                    </Card>
+                  </Box>
                 )}
 
                 {page === 2 && (
-                  <>
+                  <Box sx={{ px: { xs: 0.5, md: 1.5 } }}>
+                    <Card sx={surveyStepCardSx}>
+                      <CardContent sx={surveyStepCardContentSx}>
+                        <Stack spacing={2.2}>
+                          <Box>
+                            <Typography variant="subtitle1" sx={{ fontWeight: 800, color: '#6C3841' }}>
+                              Reconocimiento de figuras
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              Aquí agrupamos conocimiento de personajes públicos con un acomodo más claro y menos saturado.
+                            </Typography>
+                          </Box>
                     {/* 2️⃣ Reconocimiento de figuras públicas */}
-                    <Grid container spacing={2}>
-                    <Grid item xs={12} md={4}>
+                    <Grid container rowSpacing={{ xs: 2.5, md: 3 }} columnSpacing={0} sx={surveyGridSx}>
+                    <Grid item xs={12}>
                       <TextField
                         select
                         label="5. ¿Conoce a Gino Segura?"
@@ -1110,7 +1167,7 @@ export default function SurveyNewPage() {
                       </TextField>
                     </Grid>
 
-                    <Grid item xs={12} md={4}>
+                    <Grid item xs={12}>
                       <TextField
                         select
                         label="¿Conoce a Latifa Martínez?"
@@ -1128,7 +1185,7 @@ export default function SurveyNewPage() {
                       </TextField>
                     </Grid>
 
-                    <Grid item xs={12} md={4}>
+                    <Grid item xs={12}>
                       <TextField
                         select
                         label="¿Conoce a Roberto Palazuelos?"
@@ -1170,13 +1227,27 @@ export default function SurveyNewPage() {
                       </TextField>
                     </Grid>
                     </Grid>
-                  </>
+                        </Stack>
+                      </CardContent>
+                    </Card>
+                  </Box>
                 )}
 
                 {page === 3 && (
-                  <>
+                  <Box sx={{ px: { xs: 0.5, md: 1.5 } }}>
+                    <Card sx={surveyStepCardSx}>
+                      <CardContent sx={surveyStepCardContentSx}>
+                        <Stack spacing={2.2}>
+                          <Box>
+                            <Typography variant="subtitle1" sx={{ fontWeight: 800, color: '#6C3841' }}>
+                              Desempeño y percepción
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              Las preguntas largas ahora tienen un contenedor más ancho y respirado para que no se sientan apretadas.
+                            </Typography>
+                          </Box>
                     {/* 3️⃣ Desempeño y percepción */}
-                  <Grid container spacing={2}>
+                  <Grid container rowSpacing={{ xs: 2.5, md: 3 }} columnSpacing={0} sx={surveyGridSx}>
                     <Grid item xs={12}>
                       <TextField
                         select
@@ -1199,7 +1270,7 @@ export default function SurveyNewPage() {
                       </TextField>
                     </Grid>
 
-                    <Grid item xs={12} md={6}>
+                    <Grid item xs={12}>
                       <TextField
                         select
                         label="8. Opinión de Gino Segura"
@@ -1222,7 +1293,7 @@ export default function SurveyNewPage() {
                       </TextField>
                     </Grid>
 
-                    <Grid item xs={12} md={6}>
+                    <Grid item xs={12}>
                       <TextField
                         select
                         label="9. Principal atributo asociado"
@@ -1244,14 +1315,28 @@ export default function SurveyNewPage() {
                       </TextField>
                     </Grid>
                   </Grid>
-                  </>
+                        </Stack>
+                      </CardContent>
+                    </Card>
+                  </Box>
                 )}
 
                 {page === 4 && (
-                  <>
+                  <Box sx={{ px: { xs: 0.5, md: 1.5 } }}>
+                    <Card sx={surveyStepCardSx}>
+                      <CardContent sx={surveyStepCardContentSx}>
+                        <Stack spacing={2.2}>
+                          <Box>
+                            <Typography variant="subtitle1" sx={{ fontWeight: 800, color: '#6C3841' }}>
+                              Problemáticas y cierre
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              La última página conserva el paginado normal, pero con mejor separación lateral y más orden visual entre campos.
+                            </Typography>
+                          </Box>
                     {/* 4️⃣ Problemáticas y cierre */}
-                  <Grid container spacing={2}>
-                    <Grid item xs={12} md={6}>
+                  <Grid container rowSpacing={{ xs: 2.5, md: 3 }} columnSpacing={0} sx={surveyGridSx}>
+                    <Grid item xs={12}>
                       <TextField
                         select
                         label="10. Problemática nacional"
@@ -1276,7 +1361,7 @@ export default function SurveyNewPage() {
                     </Grid>
 
                     {answers.problemaNacional === 'Otro' && (
-                      <Grid item xs={12} md={6}>
+                      <Grid item xs={12}>
                         <TextField
                           label="Otro problema nacional"
                           value={answers.problemaNacionalOtro}
@@ -1288,7 +1373,7 @@ export default function SurveyNewPage() {
                       </Grid>
                     )}
 
-                    <Grid item xs={12} md={6}>
+                    <Grid item xs={12}>
                       <TextField
                         select
                         label="11. Problemática local"
@@ -1311,7 +1396,7 @@ export default function SurveyNewPage() {
                     </Grid>
 
                     {answers.problemaLocal === 'Otro' && (
-                      <Grid item xs={12} md={6}>
+                      <Grid item xs={12}>
                         <TextField
                           label="Otro problema local"
                           value={answers.problemaLocalOtro}
@@ -1323,7 +1408,7 @@ export default function SurveyNewPage() {
                       </Grid>
                     )}
 
-                    <Grid item xs={12} md={6}>
+                    <Grid item xs={12}>
                       <TextField
                         select
                         label="Resultado de la entrevista"
@@ -1350,52 +1435,68 @@ export default function SurveyNewPage() {
                       />
                     </Grid>
                   </Grid>
-                  </>
+                        </Stack>
+                      </CardContent>
+                    </Card>
+                  </Box>
                 )}
 
-                <Stack
-                  direction={{ xs: 'column', sm: 'row' }}
-                  justifyContent="space-between"
-                  spacing={1}
-                  alignItems="center"
-                >
-                  <Pagination
-                    count={surveyPages.length}
-                    page={page}
-                    onChange={(_, value) => setPage(value)}
-                    color="primary"
-                  />
-
-                  <Stack direction="row" spacing={1}>
-                    <Button
-                      variant="outlined"
-                      disabled={page === 1}
-                      onClick={() => setPage((p) => p - 1)}
-                      sx={{ borderRadius: 999 }}
-                    >
-                      ⬅️ Anterior
-                    </Button>
-
-                    {page < surveyPages.length ? (
-                      <Button
-                        variant="contained"
-                        onClick={() => setPage((p) => p + 1)}
-                        sx={{ borderRadius: 999 }}
+                <Box sx={{ px: { xs: 0.5, md: 1.5 } }}>
+                  <Card
+                    sx={{
+                      borderRadius: 4,
+                      border: '1px solid rgba(108,56,65,0.10)',
+                      boxShadow: 'none',
+                      bgcolor: 'rgba(255,255,255,0.92)',
+                    }}
+                  >
+                    <CardContent sx={{ px: { xs: 2, md: 3 }, py: 2 }}>
+                      <Stack
+                        direction={{ xs: 'column', sm: 'row' }}
+                        justifyContent="space-between"
+                        spacing={1.5}
+                        alignItems="center"
                       >
-                        Siguiente ➡️
-                      </Button>
-                    ) : (
-                      <Button
-                        variant="contained"
-                        startIcon={<SaveIcon />}
-                        onClick={() => setConfirmSaveOpen(true)}
-                        sx={{ borderRadius: 999, fontWeight: 800 }}
-                      >
-                        Confirmar encuesta
-                      </Button>
-                    )}
-                  </Stack>
-                </Stack>
+                        <Pagination
+                          count={surveyPages.length}
+                          page={page}
+                          onChange={(_, value) => setPage(value)}
+                          color="primary"
+                        />
+
+                        <Stack direction="row" spacing={1}>
+                          <Button
+                            variant="outlined"
+                            disabled={page === 1}
+                            onClick={() => setPage((p) => p - 1)}
+                            sx={{ borderRadius: 999 }}
+                          >
+                            ⬅️ Anterior
+                          </Button>
+
+                          {page < surveyPages.length ? (
+                            <Button
+                              variant="contained"
+                              onClick={() => setPage((p) => p + 1)}
+                              sx={{ borderRadius: 999 }}
+                            >
+                              Siguiente ➡️
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="contained"
+                              startIcon={<SaveIcon />}
+                              onClick={() => setConfirmSaveOpen(true)}
+                              sx={{ borderRadius: 999, fontWeight: 800 }}
+                            >
+                              Confirmar encuesta
+                            </Button>
+                          )}
+                        </Stack>
+                      </Stack>
+                    </CardContent>
+                  </Card>
+                </Box>
               </Stack>
             )}
           </CardContent>
