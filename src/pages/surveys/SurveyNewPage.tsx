@@ -11,6 +11,7 @@
 import { useEffect, useMemo, useRef, useState, type SyntheticEvent } from 'react';
 import {
   Alert,
+  Autocomplete,
   Box,
   Button,
   Card,
@@ -213,6 +214,7 @@ function createEmptyPerson(mode: 'manual' | 'ocr', geo: GeoSnapshot): PersonForm
     nombres: '',
     apellidoPaterno: '',
     apellidoMaterno: '',
+    telefono: '',
     sexo: '',
     fechaNacimiento: '',
     curp: '',
@@ -240,6 +242,7 @@ export default function SurveyNewPage() {
   const [cancelOpen, setCancelOpen] = useState(false);
   const [confirmSaveOpen, setConfirmSaveOpen] = useState(false);
   const [finishOpen, setFinishOpen] = useState(false);
+  const [missingPhoneOpen, setMissingPhoneOpen] = useState(false);
 
   const [page, setPage] = useState(1);
   const [personMode, setPersonMode] = useState<'manual' | 'ocr'>('manual');
@@ -259,6 +262,7 @@ export default function SurveyNewPage() {
   const [cropApplied, setCropApplied] = useState(false);
 
   const ocrImageRef = useRef<HTMLImageElement | null>(null);
+  const phoneInputRef = useRef<HTMLInputElement | null>(null);
 
   const user = authStore.getUser();
 
@@ -492,6 +496,7 @@ export default function SurveyNewPage() {
         nombres: result.mapped.nombres,
         apellidoPaterno: result.mapped.apellidoPaterno,
         apellidoMaterno: result.mapped.apellidoMaterno,
+        telefono: prev?.telefono ?? '',
         sexo: result.mapped.sexo,
         fechaNacimiento: result.mapped.fechaNacimiento,
         curp: result.mapped.curp,
@@ -545,12 +550,6 @@ export default function SurveyNewPage() {
     setFinishOpen(true);
     toast.success('Encuesta terminada y guardada ✅');
   };
-
-  const sectionMenuItems = sections.map((section) => (
-    <MenuItem key={section.IdSeccion} value={String(section.IdSeccion)}>
-      {section.IdSeccion} · {section.Municipio}
-    </MenuItem>
-  ));
 
   return (
     <>
@@ -841,7 +840,7 @@ export default function SurveyNewPage() {
                   </Card>
                 )}
 
-                <Box sx={{ px: { xs: 0.5, md: 1.5 } }}>
+                <Box sx={{ px: { xs: 0.5, md: 1.5 }, pr: { xs: 1.5, md: 3.5, lg: 5 } }}>
                   <Grid
                     container
                     rowSpacing={{ xs: 2.5, md: 3 }}
@@ -881,6 +880,18 @@ export default function SurveyNewPage() {
                       label="Apellido materno"
                       value={person?.apellidoMaterno ?? ''}
                       onChange={(e) => updatePersonField('apellidoMaterno', e.target.value)}
+                      fullWidth
+                    />
+                  </Grid>
+
+                  <Grid item xs={12} md={4}>
+                    <TextField
+                      label="Teléfono"
+                      value={person?.telefono ?? ''}
+                      inputRef={phoneInputRef}
+                      onChange={(e) =>
+                        updatePersonField('telefono', e.target.value.replace(/[^\d+()\-\s]/g, ''))
+                      }
                       fullWidth
                     />
                   </Grid>
@@ -929,21 +940,26 @@ export default function SurveyNewPage() {
                   </Grid>
 
                   <Grid item xs={12} md={4}>
-                    <TextField
-                      select
-                      label="Sección"
-                      value={person?.seccion ?? ''}
-                      onChange={(e) => handleSelectSection(e.target.value)}
-                      fullWidth
+                    <Autocomplete
+                      options={sections}
+                      value={selectedSection}
+                      onChange={(_, value) => handleSelectSection(value ? String(value.IdSeccion) : '')}
+                      getOptionLabel={(option) => `${option.IdSeccion} · ${option.Municipio}`}
+                      isOptionEqualToValue={(option, value) => option.IdSeccion === value.IdSeccion}
                       disabled={sectionsLoading}
-                      helperText={
-                        sectionsLoading
-                          ? 'Cargando catálogo de secciones...'
-                          : 'Selecciona una sección del catálogo oficial'
-                      }
-                    >
-                      {sectionMenuItems}
-                    </TextField>
+                      noOptionsText={sectionsLoading ? 'Cargando catálogo...' : 'No se encontraron secciones'}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          label="Sección"
+                          helperText={
+                            sectionsLoading
+                              ? 'Cargando catálogo de secciones...'
+                              : 'Selecciona o busca una sección del catálogo oficial'
+                          }
+                        />
+                      )}
+                    />
                   </Grid>
 
                   <Grid item xs={12} md={8}>
@@ -1025,7 +1041,14 @@ export default function SurveyNewPage() {
                   <Button
                     variant="contained"
                     disabled={!completePerson}
-                    onClick={() => setTab(1)}
+                    onClick={() => {
+                      if (!person?.telefono.trim()) {
+                        setMissingPhoneOpen(true);
+                        return;
+                      }
+
+                      setTab(1);
+                    }}
                     sx={{ borderRadius: 999, fontWeight: 800 }}
                   >
                     Continuar a encuesta ➡️
@@ -1535,6 +1558,23 @@ export default function SurveyNewPage() {
           onConfirm={() => {
             setCancelOpen(false);
             handleStartNew();
+          }}
+        />
+
+        <ConfirmDialog
+          open={missingPhoneOpen}
+          title="Número de contacto faltante"
+          content="No capturaste teléfono. ¿Deseas continuar la encuesta sin número de contacto o prefieres capturarlo ahora?"
+          confirmText="Continuar"
+          cancelText="Poner número de contacto"
+          autoFocusAction="cancel"
+          onClose={() => {
+            setMissingPhoneOpen(false);
+            window.setTimeout(() => phoneInputRef.current?.focus(), 60);
+          }}
+          onConfirm={() => {
+            setMissingPhoneOpen(false);
+            setTab(1);
           }}
         />
 

@@ -668,7 +668,7 @@ export default function DashboardPage() {
             'linear-gradient(120deg, #6C3841 0%, #7B414A 38%, #8B5B63 62%, #EDE5E3 100%)',
         }}
       >
-        <CardContent sx={{ p: { xs: 2.5, md: 3.5 } }}>
+        <CardContent sx={{ p: { xs: 2.5, md: 3.5 }, pr: { xs: 2.5, md: 4.5, lg: 5.5 } }}>
           <Grid container spacing={3} alignItems="center">
             <Grid item xs={12} lg={8}>
               <Stack spacing={2.2}>
@@ -811,6 +811,7 @@ export default function DashboardPage() {
         </Card>
       ) : (
         <>
+          <Box sx={{ px: { xs: 0, md: 0.5 }, pr: { xs: 0, md: 1.5, lg: 2.5 } }}>
           <Grid container spacing={2}>
             <Grid item xs={12} md={6} xl={4}>
               <StatCard
@@ -867,7 +868,9 @@ export default function DashboardPage() {
               />
             </Grid>
           </Grid>
+          </Box>
 
+          <Box sx={{ px: { xs: 0, md: 0.5 }, pr: { xs: 0, md: 1.5, lg: 2.5 } }}>
           <Grid container spacing={2}>
             <Grid item xs={12} xl={7}>
               <BarsByMonth
@@ -886,7 +889,9 @@ export default function DashboardPage() {
               />
             </Grid>
           </Grid>
+          </Box>
 
+          <Box sx={{ px: { xs: 0, md: 0.5 }, pr: { xs: 0, md: 1.5, lg: 2.5 } }}>
           <Grid container spacing={2}>
             <Grid item xs={12} lg={7}>
               <HorizontalBars
@@ -913,7 +918,9 @@ export default function DashboardPage() {
               />
             </Grid>
           </Grid>
+          </Box>
 
+          <Box sx={{ px: { xs: 0, md: 0.5 }, pr: { xs: 0, md: 1.5, lg: 2.5 } }}>
           <Grid container spacing={2}>
             <Grid item xs={12} lg={6}>
               <Card sx={{ height: '100%' }}>
@@ -1069,7 +1076,9 @@ export default function DashboardPage() {
               </Card>
             </Grid>
           </Grid>
+          </Box>
 
+          <Box sx={{ px: { xs: 0, md: 0.5 }, pr: { xs: 0, md: 1.5, lg: 2.5 } }}>
           <Card>
             <CardContent>
               <Stack spacing={2}>
@@ -1125,6 +1134,7 @@ export default function DashboardPage() {
               </Stack>
             </CardContent>
           </Card>
+          </Box>
         </>
       )}
     </Stack>

@@ -16,6 +16,7 @@ import {
   CardContent,
   Chip,
   Divider,
+  IconButton,
   InputAdornment,
   MenuItem,
   Pagination,
@@ -26,14 +27,22 @@ import {
   TableHead,
   TableRow,
   TextField,
+  Tooltip,
   Typography,
 } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
+import useMediaQuery from '@mui/material/useMediaQuery';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import EditIcon from '@mui/icons-material/Edit';
+import WhatsAppIcon from '@mui/icons-material/WhatsApp';
+import PlaceIcon from '@mui/icons-material/Place';
 import SearchIcon from '@mui/icons-material/Search';
 import FilterAltIcon from '@mui/icons-material/FilterAlt';
 import ClearIcon from '@mui/icons-material/Clear';
 import SortIcon from '@mui/icons-material/Sort';
 import { respondentsStore } from '../../store/respondents.store';
+import { buildWhatsAppUrl, formatPhone } from '../../utils/contact';
+import { buildGoogleMapsPlaceUrl } from '../../utils/maps';
 
 const PAGE_SIZE = 15;
 
@@ -82,6 +91,7 @@ function matchesApproximateSearch(item: ReturnType<typeof respondentsStore.list>
   const searchableFields = [
     item.person.folio,
     fullName,
+    item.person.telefono,
     item.person.seccion,
     item.person.municipio,
     item.person.colonia,
@@ -113,7 +123,9 @@ function compareValues(a: string | number, b: string | number, direction: SortDi
 }
 
 export default function RespondentsListPage() {
+  const theme = useTheme();
   const navigate = useNavigate();
+  const useCardLayout = useMediaQuery(theme.breakpoints.down('lg'));
 
   const [page, setPage] = useState(1);
 
@@ -266,10 +278,10 @@ export default function RespondentsListPage() {
             {/* 🧰 Fila 1: búsqueda principal y acceso rápido */}
             <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
               <TextField
-                label="Buscar por folio, nombre, municipio, sección o entrevistador 🔎"
+                label="Buscar por folio, nombre, teléfono, municipio, sección o entrevistador 🔎"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Ej. blanca, cozumel, 300, fol-177..."
+                placeholder="Ej. blanca, 9831234567, cozumel, 300, fol-177..."
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
@@ -369,71 +381,272 @@ export default function RespondentsListPage() {
 
             <Divider />
 
-            {/* 🧾 Tabla principal de consulta */}
-            <Box sx={{ overflowX: 'auto' }}>
-              <Table sx={{ minWidth: 920 }}>
-                <TableHead>
-                  <TableRow>
-                    <TableCell sx={{ fontWeight: 800 }}>Folio</TableCell>
-                    <TableCell sx={{ fontWeight: 800 }}>Nombre</TableCell>
-                    <TableCell sx={{ fontWeight: 800 }}>Sección</TableCell>
-                    <TableCell sx={{ fontWeight: 800 }}>Municipio</TableCell>
-                    <TableCell sx={{ fontWeight: 800 }}>Resultado</TableCell>
-                    <TableCell sx={{ fontWeight: 800 }}>Fecha</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 800 }}>
-                      Acciones
-                    </TableCell>
-                  </TableRow>
-                </TableHead>
+            {/* 🧾 Tabla en escritorio / tarjetas en tablet y móvil */}
+            {useCardLayout ? (
+              <Stack spacing={2}>
+                {paged.map((item) => {
+                  const whatsappUrl = buildWhatsAppUrl(item.person.telefono);
+                  const mapsUrl = buildGoogleMapsPlaceUrl(
+                    item.person.geo?.latitude,
+                    item.person.geo?.longitude
+                  );
 
-                <TableBody>
-                  {paged.map((item) => (
-                    <TableRow
+                  return (
+                    <Card
                       key={item.id}
-                      hover
+                      variant="outlined"
                       sx={{
-                        '&:hover': {
-                          bgcolor: 'rgba(108,56,65,0.03)',
-                        },
+                        borderRadius: 4,
+                        borderColor: 'rgba(108,56,65,0.12)',
+                        boxShadow: 'none',
                       }}
                     >
-                      <TableCell sx={{ fontWeight: 700 }}>{item.person.folio}</TableCell>
-                      <TableCell>
-                        <Stack spacing={0.3}>
-                          <Typography sx={{ fontWeight: 700 }}>
-                            {buildFullName(item) || '-'}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            Encuestador: {item.interviewerName || '-'}
-                          </Typography>
+                      <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
+                        <Stack spacing={1.6}>
+                          <Stack
+                            direction={{ xs: 'column', sm: 'row' }}
+                            justifyContent="space-between"
+                            spacing={1}
+                            alignItems={{ xs: 'flex-start', sm: 'flex-start' }}
+                          >
+                            <Box>
+                              <Typography variant="caption" color="text.secondary">
+                                {item.person.folio}
+                              </Typography>
+                              <Typography variant="h6" sx={{ fontWeight: 900 }}>
+                                {buildFullName(item) || '-'}
+                              </Typography>
+                              <Typography variant="body2" color="text.secondary">
+                                Encuestador: {item.interviewerName || '-'}
+                              </Typography>
+                            </Box>
+
+                            <Chip
+                              label={item.answers.resultado || '-'}
+                              size="small"
+                              color={item.answers.resultado === 'Completa' ? 'success' : 'warning'}
+                              variant="outlined"
+                            />
+                          </Stack>
+
+                          <Box
+                            sx={{
+                              display: 'grid',
+                              gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' },
+                              gap: 1.4,
+                            }}
+                          >
+                            {[
+                              { label: 'Teléfono', value: formatPhone(item.person.telefono) },
+                              { label: 'Sección', value: item.person.seccion || '-' },
+                              { label: 'Municipio', value: item.person.municipio || '-' },
+                              { label: 'Fecha', value: new Date(item.createdAt).toLocaleString() },
+                            ].map((field) => (
+                              <Box
+                                key={field.label}
+                                sx={{
+                                  p: 1.4,
+                                  borderRadius: 3,
+                                  bgcolor: 'rgba(108,56,65,0.035)',
+                                  border: '1px solid rgba(108,56,65,0.08)',
+                                }}
+                              >
+                                <Typography variant="caption" color="text.secondary">
+                                  {field.label}
+                                </Typography>
+                                <Typography sx={{ fontWeight: 700 }}>
+                                  {field.value}
+                                </Typography>
+                              </Box>
+                            ))}
+                          </Box>
+
+                          <Stack direction="row" spacing={0.5} justifyContent="flex-end" flexWrap="wrap" useFlexGap>
+                            <Tooltip title="Ver detalle">
+                              <IconButton color="primary" onClick={() => navigate(`/respondents/${item.id}`)}>
+                                <VisibilityIcon />
+                              </IconButton>
+                            </Tooltip>
+
+                            <Tooltip title="Editar datos básicos">
+                              <IconButton color="primary" onClick={() => navigate(`/respondents/${item.id}/edit`)}>
+                                <EditIcon />
+                              </IconButton>
+                            </Tooltip>
+
+                            <Tooltip title={whatsappUrl ? 'Abrir WhatsApp' : 'Sin teléfono'}>
+                              <span>
+                                <IconButton
+                                  color="success"
+                                  component="a"
+                                  href={whatsappUrl ?? undefined}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  disabled={!whatsappUrl}
+                                >
+                                  <WhatsAppIcon />
+                                </IconButton>
+                              </span>
+                            </Tooltip>
+
+                            <Tooltip title={mapsUrl ? 'Abrir en Google Maps' : 'Sin coordenadas'}>
+                              <span>
+                                <IconButton
+                                  color="secondary"
+                                  component="a"
+                                  href={mapsUrl ?? undefined}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  disabled={!mapsUrl}
+                                >
+                                  <PlaceIcon />
+                                </IconButton>
+                              </span>
+                            </Tooltip>
+                          </Stack>
                         </Stack>
-                      </TableCell>
-                      <TableCell>{item.person.seccion || '-'}</TableCell>
-                      <TableCell>{item.person.municipio || '-'}</TableCell>
-                      <TableCell>
-                        <Chip
-                          label={item.answers.resultado || '-'}
-                          size="small"
-                          color={item.answers.resultado === 'Completa' ? 'success' : 'warning'}
-                          variant="outlined"
-                        />
-                      </TableCell>
-                      <TableCell>{new Date(item.createdAt).toLocaleString()}</TableCell>
-                      <TableCell align="right">
-                        <Button
-                          variant="outlined"
-                          startIcon={<VisibilityIcon />}
-                          onClick={() => navigate(`/respondents/${item.id}`)}
-                          sx={{ borderRadius: 999, fontWeight: 800 }}
-                        >
-                          Ver
-                        </Button>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </Stack>
+            ) : (
+              <Box sx={{ width: '100%', overflow: 'hidden' }}>
+                <Table
+                  sx={{
+                    width: '100%',
+                    tableLayout: 'fixed',
+                    '& .MuiTableCell-root': {
+                      px: 1.5,
+                      py: 2.2,
+                      fontSize: '0.95rem',
+                      verticalAlign: 'top',
+                      whiteSpace: 'normal',
+                      wordBreak: 'break-word',
+                    },
+                  }}
+                >
+                  <TableHead>
+                    <TableRow>
+                      <TableCell sx={{ fontWeight: 800, width: '13%' }}>Folio</TableCell>
+                      <TableCell sx={{ fontWeight: 800, width: '19%' }}>Nombre</TableCell>
+                      <TableCell sx={{ fontWeight: 800, width: '9%' }}>Teléfono</TableCell>
+                      <TableCell sx={{ fontWeight: 800, width: '7%' }}>Sección</TableCell>
+                      <TableCell sx={{ fontWeight: 800, width: '11%' }}>Municipio</TableCell>
+                      <TableCell sx={{ fontWeight: 800, width: '10%' }}>Resultado</TableCell>
+                      <TableCell sx={{ fontWeight: 800, width: '13%' }}>Fecha</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 800, width: '18%' }}>
+                        Acciones
                       </TableCell>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </Box>
+                  </TableHead>
+
+                  <TableBody>
+                    {paged.map((item) => {
+                      const whatsappUrl = buildWhatsAppUrl(item.person.telefono);
+                      const mapsUrl = buildGoogleMapsPlaceUrl(
+                        item.person.geo?.latitude,
+                        item.person.geo?.longitude
+                      );
+
+                      return (
+                        <TableRow
+                          key={item.id}
+                          hover
+                          sx={{
+                            '&:hover': {
+                              bgcolor: 'rgba(108,56,65,0.03)',
+                            },
+                          }}
+                        >
+                          <TableCell sx={{ fontWeight: 700, fontSize: '0.92rem' }}>{item.person.folio}</TableCell>
+                          <TableCell>
+                            <Stack spacing={0.3}>
+                              <Typography sx={{ fontWeight: 800, fontSize: '0.98rem', lineHeight: 1.35 }}>
+                                {buildFullName(item) || '-'}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.82rem' }}>
+                                Encuestador: {item.interviewerName || '-'}
+                              </Typography>
+                            </Stack>
+                          </TableCell>
+                          <TableCell sx={{ fontSize: '0.92rem' }}>{formatPhone(item.person.telefono)}</TableCell>
+                          <TableCell sx={{ fontSize: '0.92rem' }}>{item.person.seccion || '-'}</TableCell>
+                          <TableCell sx={{ fontSize: '0.92rem' }}>{item.person.municipio || '-'}</TableCell>
+                          <TableCell>
+                            <Chip
+                              label={item.answers.resultado || '-'}
+                              size="small"
+                              color={item.answers.resultado === 'Completa' ? 'success' : 'warning'}
+                              variant="outlined"
+                              sx={{ fontWeight: 800, maxWidth: '100%' }}
+                            />
+                          </TableCell>
+                          <TableCell sx={{ fontSize: '0.9rem', lineHeight: 1.45 }}>
+                            {new Date(item.createdAt).toLocaleString()}
+                          </TableCell>
+                          <TableCell align="right">
+                            <Stack direction="row" spacing={0.25} justifyContent="flex-end" flexWrap="wrap" useFlexGap>
+                              <Tooltip title="Ver detalle">
+                                <IconButton
+                                  color="primary"
+                                  size="small"
+                                  onClick={() => navigate(`/respondents/${item.id}`)}
+                                >
+                                  <VisibilityIcon />
+                                </IconButton>
+                              </Tooltip>
+
+                              <Tooltip title="Editar datos básicos">
+                                <IconButton
+                                  color="primary"
+                                  size="small"
+                                  onClick={() => navigate(`/respondents/${item.id}/edit`)}
+                                >
+                                  <EditIcon />
+                                </IconButton>
+                              </Tooltip>
+
+                              <Tooltip title={whatsappUrl ? 'Abrir WhatsApp' : 'Sin teléfono'}>
+                                <span>
+                                  <IconButton
+                                    color="success"
+                                    size="small"
+                                    component="a"
+                                    href={whatsappUrl ?? undefined}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    disabled={!whatsappUrl}
+                                  >
+                                    <WhatsAppIcon />
+                                  </IconButton>
+                                </span>
+                              </Tooltip>
+
+                              <Tooltip title={mapsUrl ? 'Abrir en Google Maps' : 'Sin coordenadas'}>
+                                <span>
+                                  <IconButton
+                                    color="secondary"
+                                    size="small"
+                                    component="a"
+                                    href={mapsUrl ?? undefined}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    disabled={!mapsUrl}
+                                  >
+                                    <PlaceIcon />
+                                  </IconButton>
+                                </span>
+                              </Tooltip>
+                            </Stack>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </Box>
+            )}
 
             {/* 🫥 Estado vacío inteligente */}
             {!paged.length && (

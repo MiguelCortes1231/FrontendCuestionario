@@ -12,11 +12,21 @@ interface Props {
   content: string;
   confirmText?: string;
   cancelText?: string;
+  autoFocusAction?: 'confirm' | 'cancel';
   onConfirm: () => void;
   onClose: () => void;
 }
 
-export default function ConfirmDialog({ open, title, content, confirmText = 'Confirmar', cancelText = 'Cancelar', onConfirm, onClose }: Props) {
+export default function ConfirmDialog({
+  open,
+  title,
+  content,
+  confirmText = 'Confirmar',
+  cancelText = 'Cancelar',
+  autoFocusAction = 'confirm',
+  onConfirm,
+  onClose,
+}: Props) {
   return (
     <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
       <DialogTitle sx={{ fontWeight: 900 }}>{title}</DialogTitle>
@@ -26,9 +36,13 @@ export default function ConfirmDialog({ open, title, content, confirmText = 'Con
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2.5 }}>
         {/* ↩️ Acción segura para cancelar */}
-        <Button variant="outlined" onClick={onClose}>{cancelText}</Button>
+        <Button variant="outlined" onClick={onClose} autoFocus={autoFocusAction === 'cancel'}>
+          {cancelText}
+        </Button>
         {/* ✅ Acción positiva entregada por la pantalla consumidora */}
-        <Button variant="contained" onClick={onConfirm}>{confirmText}</Button>
+        <Button variant="contained" onClick={onConfirm} autoFocus={autoFocusAction === 'confirm'}>
+          {confirmText}
+        </Button>
       </DialogActions>
     </Dialog>
   );

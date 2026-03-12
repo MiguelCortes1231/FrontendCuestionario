@@ -20,6 +20,7 @@ import {
 } from '@mui/material';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import EditIcon from '@mui/icons-material/Edit';
 import AssignmentTurnedInIcon from '@mui/icons-material/AssignmentTurnedIn';
 import PersonIcon from '@mui/icons-material/Person';
 import PlaceIcon from '@mui/icons-material/Place';
@@ -29,6 +30,8 @@ import ReadonlyGeoMap from '../../components/map/ReadonlyGeoMap';
 import { respondentsStore } from '../../store/respondents.store';
 import { exportNodeToPdf } from '../../utils/pdf';
 import type { SurveyAnswers } from '../../types/survey';
+import { formatPhone } from '../../utils/contact';
+import { buildGoogleMapsPlaceUrl } from '../../utils/maps';
 
 type PreviewAnswerItem = {
   key: keyof SurveyAnswers | string;
@@ -168,6 +171,9 @@ export default function RespondentPreviewPage() {
   const navigate = useNavigate();
   const record = id ? respondentsStore.findById(id) : null;
   const previewRef = useRef<HTMLDivElement>(null);
+  const mapsUrl = record
+    ? buildGoogleMapsPlaceUrl(record.person.geo?.latitude, record.person.geo?.longitude)
+    : null;
 
   const answerGroups = useMemo(() => {
     if (!record) return [];
@@ -216,6 +222,15 @@ export default function RespondentPreviewPage() {
             sx={{ borderRadius: 999 }}
           >
             Volver
+          </Button>
+
+          <Button
+            variant="outlined"
+            startIcon={<EditIcon />}
+            onClick={() => navigate(`/respondents/${record.id}/edit`)}
+            sx={{ borderRadius: 999 }}
+          >
+            Editar
           </Button>
 
           <Button
@@ -393,6 +408,15 @@ export default function RespondentPreviewPage() {
 
                           <Grid item xs={12} sm={6}>
                             <Typography variant="body2" color="text.secondary">
+                              Teléfono
+                            </Typography>
+                            <Typography sx={{ fontWeight: 700 }}>
+                              {formatPhone(record.person.telefono)}
+                            </Typography>
+                          </Grid>
+
+                          <Grid item xs={12} sm={6}>
+                            <Typography variant="body2" color="text.secondary">
                               Fecha de nacimiento
                             </Typography>
                             <Typography sx={{ fontWeight: 700 }}>
@@ -459,6 +483,20 @@ export default function RespondentPreviewPage() {
                     </Stack>
 
                     <Divider />
+
+                    {mapsUrl ? (
+                      <Button
+                        component="a"
+                        href={mapsUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        variant="outlined"
+                        startIcon={<PlaceIcon />}
+                        sx={{ borderRadius: 999, alignSelf: 'flex-start' }}
+                      >
+                        Abrir en Google Maps
+                      </Button>
+                    ) : null}
 
                     <ReadonlyGeoMap geo={record.person.geo} />
                   </Stack>

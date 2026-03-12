@@ -13,6 +13,7 @@ import DashboardPage from '../pages/dashboard/DashboardPage';
 import SurveyNewPage from '../pages/surveys/SurveyNewPage';
 import RespondentsListPage from '../pages/respondents/RespondentsListPage';
 import RespondentPreviewPage from '../pages/respondents/RespondentPreviewPage';
+import RespondentEditPage from '../pages/respondents/RespondentEditPage';
 import { authStore } from '../store/auth.store';
 import { buildLoginUrl } from '../services/auth.service';
 
@@ -45,6 +46,7 @@ export function AppRouter() {
         <Route path="surveys/new" element={<SurveyNewPage />} />
         <Route path="respondents" element={<RespondentsListPage />} />
         <Route path="respondents/:id" element={<RespondentPreviewPage />} />
+        <Route path="respondents/:id/edit" element={<RespondentEditPage />} />
       </Route>
     </Routes>
   );

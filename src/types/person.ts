@@ -35,6 +35,7 @@ export type PersonFormData = {
   nombres: string;
   apellidoPaterno: string;
   apellidoMaterno: string;
+  telefono: string;
   sexo: string;
   fechaNacimiento: string;
   curp: string;

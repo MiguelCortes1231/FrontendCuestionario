@@ -5,6 +5,7 @@
  * permite seguir operando mientras el backend de guardado/listado evoluciona.
  */
 import type { SurveyRecord } from '../types/survey';
+import type { PersonFormData } from '../types/person';
 
 const KEY = 'contigo_qroo_respondents';
 
@@ -22,5 +23,18 @@ export const respondentsStore = {
   // 🔍 Busca una encuesta específica para abrir su vista previa o PDF.
   findById(id: string) {
     return this.list().find((item) => item.id === id) ?? null;
+  },
+  // ✏️ Actualiza solo los datos básicos de la persona sin alterar respuestas ni metadata.
+  updatePerson(id: string, person: PersonFormData) {
+    const nextData = this.list().map((item) =>
+      item.id === id
+        ? {
+            ...item,
+            person,
+          }
+        : item
+    );
+
+    localStorage.setItem(KEY, JSON.stringify(nextData));
   },
 };
