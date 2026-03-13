@@ -28,7 +28,8 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import SaveIcon from '@mui/icons-material/Save';
 import { toast } from 'react-toastify';
 import type { PersonFormData } from '../../types/person';
-import { getSecciones } from '../../services/sections.service';
+import { validateRequiredPersonFields } from '../../domain/person/personForm';
+import { buildSectionMunicipalityMap, getSecciones } from '../../services/sections.service';
 import { getRespondentById, updateRespondentPerson } from '../../services/respondents.service';
 
 const formGridSx = {
@@ -46,30 +47,6 @@ const formGridSx = {
     minHeight: 62,
   },
 } as const;
-
-type PersonErrorMap = Partial<Record<'nombres' | 'apellidoPaterno' | 'claveElector' | 'seccion' | 'calle' | 'telefono', string>>;
-
-function validateRequiredPersonFields(person: PersonFormData | null): PersonErrorMap {
-  if (!person) {
-    return {
-      nombres: 'Es requerido',
-      apellidoPaterno: 'Es requerido',
-      claveElector: 'Es requerido',
-      seccion: 'Es requerido',
-      calle: 'Es requerido',
-      telefono: 'Es requerido',
-    };
-  }
-
-  return {
-    nombres: person.nombres.trim() ? '' : 'Es requerido',
-    apellidoPaterno: person.apellidoPaterno.trim() ? '' : 'Es requerido',
-    claveElector: person.claveElector.trim() ? '' : 'Es requerido',
-    seccion: person.seccion.trim() ? '' : 'Es requerido',
-    calle: person.calle.trim() ? '' : 'Es requerido',
-    telefono: person.telefono.trim() ? '' : 'Es requerido',
-  };
-}
 
 export default function RespondentEditPage() {
   const { id } = useParams();
@@ -96,9 +73,7 @@ export default function RespondentEditPage() {
         setLoading(true);
         setLoadError(false);
         const sections = await getSecciones();
-        const sectionMap = new Map(
-          sections.map((section) => [String(section.IdSeccion), section.Municipio])
-        );
+        const sectionMap = buildSectionMunicipalityMap(sections);
         const record = await getRespondentById(id, (sectionId) => sectionMap.get(sectionId) ?? '');
         if (!alive) return;
         setPerson(record.person);

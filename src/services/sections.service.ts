@@ -11,3 +11,9 @@ export async function getSecciones() {
   const { data } = await api.get<{ success: boolean; data: SectionItem[] }>('/getSecciones');
   return data.data ?? [];
 }
+
+export function buildSectionMunicipalityMap(sections: SectionItem[]) {
+  // 🗺️ Helper pequeño pero muy útil:
+  // varias pantallas necesitan resolver sección -> municipio.
+  return new Map(sections.map((section) => [String(section.IdSeccion), section.Municipio]));
+}

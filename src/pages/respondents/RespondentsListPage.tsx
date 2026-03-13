@@ -44,7 +44,7 @@ import SortIcon from '@mui/icons-material/Sort';
 import type { SurveyRecord } from '../../types/survey';
 import { buildWhatsAppUrl, formatPhone } from '../../utils/contact';
 import { buildGoogleMapsPlaceUrl } from '../../utils/maps';
-import { getSecciones } from '../../services/sections.service';
+import { buildSectionMunicipalityMap, getSecciones } from '../../services/sections.service';
 import { getRespondents } from '../../services/respondents.service';
 
 const PAGE_SIZE = 15;
@@ -165,9 +165,7 @@ export default function RespondentsListPage() {
         setLoading(true);
         setLoadError(false);
         const sections = await getSecciones();
-        const sectionMap = new Map(
-          sections.map((section) => [String(section.IdSeccion), section.Municipio])
-        );
+        const sectionMap = buildSectionMunicipalityMap(sections);
         const data = await getRespondents((sectionId) => sectionMap.get(sectionId) ?? '');
         if (!alive) return;
         setItems(data);

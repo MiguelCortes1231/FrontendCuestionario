@@ -444,7 +444,13 @@ export async function saveSurveyAnswers(questionnaireId: string | number, answer
 export async function getRespondents(resolveMunicipality?: (sectionId: string) => string) {
   // 📚 Descarga el listado remoto y ya lo devuelve adaptado para la app.
   const { data } = await api.get<ApiResponseEnvelope<ApiCuestionario[]>>('/getCuestionarios');
-  return data.data.map((item) => mapApiCuestionarioToSurveyRecord(item, resolveMunicipality));
+  return data.data
+    .map((item) => mapApiCuestionarioToSurveyRecord(item, resolveMunicipality))
+    .sort((left, right) => {
+      const leftDate = new Date(left.createdAt).getTime();
+      const rightDate = new Date(right.createdAt).getTime();
+      return rightDate - leftDate;
+    });
 }
 
 export async function findRespondentDuplicateByClaveElector(claveElector: string) {

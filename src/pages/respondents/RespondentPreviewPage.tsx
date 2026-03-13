@@ -31,7 +31,7 @@ import { exportNodeToPdf } from '../../utils/pdf';
 import type { SurveyAnswers, SurveyRecord } from '../../types/survey';
 import { formatPhone } from '../../utils/contact';
 import { buildGoogleMapsPlaceUrl } from '../../utils/maps';
-import { getSecciones } from '../../services/sections.service';
+import { buildSectionMunicipalityMap, getSecciones } from '../../services/sections.service';
 import { getRespondentById } from '../../services/respondents.service';
 
 type PreviewAnswerItem = {
@@ -194,9 +194,7 @@ export default function RespondentPreviewPage() {
         setLoading(true);
         setLoadError(false);
         const sections = await getSecciones();
-        const sectionMap = new Map(
-          sections.map((section) => [String(section.IdSeccion), section.Municipio])
-        );
+        const sectionMap = buildSectionMunicipalityMap(sections);
         const data = await getRespondentById(id, (sectionId) => sectionMap.get(sectionId) ?? '');
         if (!alive) return;
         setRecord(data);

@@ -45,7 +45,7 @@ import { CircleMarker, MapContainer, TileLayer, useMap } from 'react-leaflet';
 import type { SurveyRecord } from '../../types/survey';
 import type { SectionItem } from '../../types/section';
 import { authStore } from '../../store/auth.store';
-import { getSecciones } from '../../services/sections.service';
+import { buildSectionMunicipalityMap, getSecciones } from '../../services/sections.service';
 import { getRespondents } from '../../services/respondents.service';
 
 type MunicipalityMeta = {
@@ -516,9 +516,7 @@ export default function DashboardPage() {
         const data = await getSecciones();
         if (!alive) return;
         setSectionsCatalog(data);
-        const sectionMap = new Map(
-          data.map((section) => [String(section.IdSeccion), normalizeMunicipalityName(section.Municipio)])
-        );
+        const sectionMap = buildSectionMunicipalityMap(data);
         const respondents = await getRespondents((sectionId) => sectionMap.get(sectionId) ?? '');
         if (!alive) return;
         setRecords(respondents);

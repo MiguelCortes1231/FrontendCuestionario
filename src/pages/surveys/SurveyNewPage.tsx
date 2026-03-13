@@ -50,6 +50,11 @@ import 'react-image-crop/dist/ReactCrop.css';
 import ReadonlyGeoMap from '../../components/map/ReadonlyGeoMap';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
 import OcrScannerOverlay from '../../components/ui/OcrScannerOverlay';
+import { validateRequiredPersonFields } from '../../domain/person/personForm';
+import {
+  findMissingSurveyAnswers,
+  type MissingAnswerItem,
+} from '../../domain/surveys/questionnaire';
 
 import { getBrowserLocation } from '../../utils/geolocation';
 import type { GeoSnapshot, PersonFormData } from '../../types/person';
@@ -157,36 +162,6 @@ const personGridSx = {
   },
 } as const;
 
-type MissingAnswerItem = {
-  field: keyof SurveyAnswers;
-  page: number;
-  questionNumber: string;
-  label: string;
-};
-
-const surveyQuestionMeta: Array<MissingAnswerItem> = [
-  { field: 'hasValidCredential', page: 1, questionNumber: '1', label: 'Credencial vigente' },
-  { field: 'sexoObservado', page: 1, questionNumber: '2', label: 'Sexo observado' },
-  { field: 'rangoEdad', page: 1, questionNumber: '3', label: 'Rango de edad' },
-  { field: 'escolaridad', page: 1, questionNumber: '4', label: 'Escolaridad' },
-  { field: 'conoceGino', page: 2, questionNumber: '5', label: '¿Conoce a Gino Segura?' },
-  { field: 'conoceLatifa', page: 2, questionNumber: '5', label: '¿Conoce a Latifa Martínez?' },
-  { field: 'conocePalazuelos', page: 2, questionNumber: '5', label: '¿Conoce a Roberto Palazuelos?' },
-  { field: 'importanciaPoliticos', page: 2, questionNumber: '6', label: 'Importancia del contacto directo' },
-  { field: 'ginoDebeSeguir', page: 3, questionNumber: '7', label: 'Labor de cercanía de Gino Segura' },
-  { field: 'opinionGino', page: 3, questionNumber: '8', label: 'Opinión de Gino Segura' },
-  { field: 'atributoGino', page: 3, questionNumber: '9', label: 'Principal atributo asociado' },
-  { field: 'problemaNacional', page: 4, questionNumber: '10', label: 'Problemática nacional' },
-  { field: 'problemaLocal', page: 4, questionNumber: '11', label: 'Problemática local' },
-];
-
-function findMissingSurveyAnswers(answers: SurveyAnswers) {
-  return surveyQuestionMeta.filter((item) => {
-    const value = answers[item.field];
-    return String(value ?? '').trim() === '';
-  });
-}
-
 function createCenteredIneCrop(mediaWidth: number, mediaHeight: number) {
   return centerCrop(
     makeAspectCrop(
@@ -269,30 +244,6 @@ function createEmptyPerson(mode: 'manual' | 'ocr', geo: GeoSnapshot): PersonForm
     tipoCredencial: '',
     fuenteCaptura: mode,
     geo,
-  };
-}
-
-type PersonErrorMap = Partial<Record<'nombres' | 'apellidoPaterno' | 'claveElector' | 'seccion' | 'calle' | 'telefono', string>>;
-
-function validateRequiredPersonFields(person: PersonFormData | null): PersonErrorMap {
-  if (!person) {
-    return {
-      nombres: 'Es requerido',
-      apellidoPaterno: 'Es requerido',
-      claveElector: 'Es requerido',
-      seccion: 'Es requerido',
-      calle: 'Es requerido',
-      telefono: 'Es requerido',
-    };
-  }
-
-  return {
-    nombres: person.nombres.trim() ? '' : 'Es requerido',
-    apellidoPaterno: person.apellidoPaterno.trim() ? '' : 'Es requerido',
-    claveElector: person.claveElector.trim() ? '' : 'Es requerido',
-    seccion: person.seccion.trim() ? '' : 'Es requerido',
-    calle: person.calle.trim() ? '' : 'Es requerido',
-    telefono: person.telefono.trim() ? '' : 'Es requerido',
   };
 }
 
