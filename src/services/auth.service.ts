@@ -24,10 +24,12 @@ export function logout() {
 }
 
 export function buildLoginUrl(reason?: string) {
+  // 🔗 Centraliza la construcción de la URL de login con motivo opcional.
   return reason ? `${LOGIN_PATH}?reason=${reason}` : LOGIN_PATH;
 }
 
 export function expireSession() {
+  // ⏳ Expira la sesión y redirige con contexto para que la UI pueda explicarlo.
   authStore.clear();
 
   if (window.location.pathname === LOGIN_PATH) {

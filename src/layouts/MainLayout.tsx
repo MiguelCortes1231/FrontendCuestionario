@@ -23,6 +23,8 @@ const drawerWidth = 290;
 const drawerCollapsedWidth = 92;
 
 export default function MainLayout() {
+  // 🧭 Layout base de toda el área autenticada.
+  // Aquí se vive la navegación lateral, la barra superior y el outlet principal.
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const navigate = useNavigate();
@@ -31,11 +33,14 @@ export default function MainLayout() {
   const [logoutOpen, setLogoutOpen] = useState(false);
   const user = authStore.getUser();
 
-  const items = useMemo(() => [
-    { label: 'Dashboard', to: '/dashboard', icon: <DashboardIcon /> },
-    { label: 'Realizar encuesta', to: '/surveys/new', icon: <AssignmentIcon /> },
-    { label: 'Encuestados', to: '/respondents', icon: <GroupIcon /> },
-  ], []);
+  const items = useMemo(
+    () => [
+      { label: 'Dashboard', to: '/dashboard', icon: <DashboardIcon /> },
+      { label: 'Realizar encuesta', to: '/surveys/new', icon: <AssignmentIcon /> },
+      { label: 'Encuestados', to: '/respondents', icon: <GroupIcon /> },
+    ],
+    []
+  );
 
   // 📏 El ancho visible del menú depende del estado colapsado y del breakpoint.
   const currentWidth = collapsed && !isMobile ? drawerCollapsedWidth : drawerWidth;
@@ -79,6 +84,7 @@ export default function MainLayout() {
               {!(collapsed && !isMobile) && <ListItemText primary={item.label} />}
             </ListItemButton>
           );
+          // 🪄 En modo colapsado el tooltip reemplaza el texto que ya no es visible.
           return collapsed && !isMobile ? <Tooltip title={item.label} placement="right" key={item.to}>{button}</Tooltip> : button;
         })}
       </List>

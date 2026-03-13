@@ -14,6 +14,7 @@ interface Props {
 }
 
 export default function ReadonlyGeoMap({ geo, compact = false }: Props) {
+  // 🛰️ Materializa en pantalla la evidencia geográfica ya tomada en campo.
   return (
     <Card>
       <CardContent>

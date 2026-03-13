@@ -7,6 +7,7 @@
 import type { GeoSnapshot } from '../types/person';
 
 export function getBrowserLocation(): Promise<GeoSnapshot> {
+  // 🌍 Se expone como promesa para mantener un contrato limpio con las pantallas.
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) {
       // 🚫 Algunos navegadores o contextos inseguros pueden no soportarla.

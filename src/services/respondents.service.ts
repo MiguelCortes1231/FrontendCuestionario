@@ -1,14 +1,30 @@
+/**
+ * 🧠 Servicio central del dominio "encuestados / cuestionarios"
+ * ---------------------------------------------------
+ * Este archivo conecta toda la parte operativa del frontend con el backend real.
+ *
+ * Sus responsabilidades son:
+ * - 🌐 consumir endpoints de alta, listado, detalle, edición y guardado
+ * - 🔁 traducir entre textos del frontend y enteros `Pregunta1..Pregunta13`
+ * - 🧩 adaptar respuestas crudas del backend a un `SurveyRecord` uniforme
+ * - ⚠️ resolver validaciones operativas del frontend, como duplicados por clave de elector
+ *
+ * Si un programador nuevo quiere entender cómo fluye la información del proyecto,
+ * este archivo es uno de los mejores puntos de entrada 🚀
+ */
 import { api } from './http';
 import type { PersonFormData } from '../types/person';
 import type { SurveyAnswers, SurveyRecord } from '../types/survey';
 import { authStore } from '../store/auth.store';
 
+// 📦 Envelope estándar de respuesta usado por varios endpoints del backend.
 type ApiResponseEnvelope<T> = {
   success: boolean;
   message?: string;
   data: T;
 };
 
+// 📥 Modelo remoto "tal cual llega" desde los endpoints de cuestionarios.
 type ApiCuestionario = {
   IdCuestionario: number;
   Folio: string;
@@ -51,6 +67,7 @@ type ApiCuestionario = {
   updated_at: string | null;
 };
 
+// 🔎 Resumen mínimo que usa la UI para advertir posibles duplicados.
 export type DuplicateRespondentMatch = {
   questionnaireId: number;
   folio: string;
@@ -59,6 +76,7 @@ export type DuplicateRespondentMatch = {
   createdAt: string;
 };
 
+// 🧍 Payload exacto que backend espera al crear o editar persona.
 type StorePersonaPayload = {
   Latitud: number;
   Longitud: number;
@@ -80,6 +98,7 @@ type StorePersonaPayload = {
   TipoCredencial: string;
 };
 
+// ✅ Respuesta del alta: aquí backend confirma y asigna el folio oficial.
 type StorePersonaResponse = {
   success: boolean;
   message: string;
@@ -87,6 +106,7 @@ type StorePersonaResponse = {
   folio: string;
 };
 
+// 🧠 Estructura que backend espera para guardar respuestas cerradas.
 type StorePreguntasPayload = {
   Pregunta1: number | null;
   Pregunta2: number | null;
@@ -105,6 +125,7 @@ type StorePreguntasPayload = {
   IdEstatus: number;
 };
 
+// ✏️ Respuesta corta del backend al editar información básica.
 type EditCuestionarioResponse = {
   success: boolean;
   message: string;
@@ -182,6 +203,7 @@ const RESULT_TO_STATUS: Record<SurveyAnswers['resultado'], number> = {
 };
 
 function normalizeOptionValue(value: unknown) {
+  // 🧼 Permite comparar textos sin sufrir por acentos, mayúsculas o espacios de más.
   return String(value ?? '')
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
@@ -190,12 +212,14 @@ function normalizeOptionValue(value: unknown) {
 }
 
 function encodeOption<T extends string>(options: readonly T[], value: string) {
+  // 🔢 Convierte el texto visible de la UI en un índice 1-based compatible con backend.
   const normalizedValue = normalizeOptionValue(value);
   const index = options.findIndex((option) => normalizeOptionValue(option) === normalizedValue);
   return index >= 0 ? index + 1 : null;
 }
 
 function decodeOption<T extends string>(options: readonly T[], value: number | null | undefined) {
+  // 🔁 Hace la traducción inversa: entero remoto -> texto que entiende la interfaz.
   if (!value || value < 1 || value > options.length) {
     return '';
   }
@@ -204,10 +228,12 @@ function decodeOption<T extends string>(options: readonly T[], value: number | n
 }
 
 function decodeResult(statusId: number | null | undefined): SurveyAnswers['resultado'] {
+  // 🎯 Traducción del estatus remoto a la etiqueta funcional del frontend.
   return STATUS_TO_RESULT[statusId as keyof typeof STATUS_TO_RESULT] ?? 'Completa';
 }
 
 function encodeSexoToApi(value: string) {
+  // 🚻 El formulario trabaja con etiquetas; el backend con abreviaturas.
   const normalized = normalizeOptionValue(value);
   if (normalized === 'mujer' || normalized === 'f') return 'F';
   if (normalized === 'hombre' || normalized === 'm') return 'M';
@@ -216,6 +242,7 @@ function encodeSexoToApi(value: string) {
 }
 
 function decodeSexoFromApi(value: string | null | undefined) {
+  // 🚻 Devuelve el sexo en el formato legible que usa la UI.
   const normalized = normalizeOptionValue(value);
   if (normalized === 'f' || normalized === 'mujer') return 'Mujer';
   if (normalized === 'm' || normalized === 'hombre') return 'Hombre';
@@ -224,11 +251,13 @@ function decodeSexoFromApi(value: string | null | undefined) {
 }
 
 function toNumber(value: string) {
+  // 🔢 Pequeño guardrail para no propagar `NaN` a los payloads remotos.
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
 function formatDateForApi(value: string) {
+  // 📅 Normaliza fechas antes de enviarlas a API. Acepta formatos flexibles de captura.
   const raw = String(value ?? '').trim();
   if (!raw) return '';
 
@@ -254,6 +283,7 @@ function formatDateForApi(value: string) {
 }
 
 function buildPersonPayload(person: PersonFormData): StorePersonaPayload {
+  // 🧍 Toma el modelo del formulario y lo transforma al contrato oficial de backend.
   return {
     Latitud: person.geo.latitude,
     Longitud: person.geo.longitude,
@@ -277,6 +307,7 @@ function buildPersonPayload(person: PersonFormData): StorePersonaPayload {
 }
 
 export function buildPersonFingerprint(person: PersonFormData) {
+  // 🧬 Huella útil para detectar si los datos básicos cambiaron realmente.
   return JSON.stringify(buildPersonPayload(person));
 }
 
@@ -284,6 +315,8 @@ export function mapApiCuestionarioToSurveyRecord(
   cuestionario: ApiCuestionario,
   resolveMunicipality?: (sectionId: string) => string
 ): SurveyRecord {
+  // 🪄 Adaptador principal backend -> frontend.
+  // Gracias a este mapeo, las pantallas no dependen del shape remoto crudo.
   const sectionId = String(cuestionario.IdSeccion ?? '').trim();
   const municipality = resolveMunicipality?.(sectionId) ?? '';
   const createdAt = cuestionario.created_at ?? new Date().toISOString();
@@ -364,6 +397,7 @@ export function mapApiCuestionarioToSurveyRecord(
 }
 
 function buildPreguntasPayload(answers: SurveyAnswers): StorePreguntasPayload {
+  // 🧠 Adaptador frontend -> backend para las respuestas del cuestionario.
   return {
     Pregunta1: encodeOption(YES_NO_OPTIONS, answers.hasValidCredential),
     Pregunta2: encodeOption(OBSERVED_SEX_OPTIONS, answers.sexoObservado),
@@ -384,11 +418,13 @@ function buildPreguntasPayload(answers: SurveyAnswers): StorePreguntasPayload {
 }
 
 export async function createRespondentPerson(person: PersonFormData) {
+  // ➕ Alta remota de persona.
   const { data } = await api.post<StorePersonaResponse>('/storePersona', buildPersonPayload(person));
   return data;
 }
 
 export async function updateRespondentPerson(questionnaireId: string | number, person: PersonFormData) {
+  // ✏️ Edición remota de datos básicos sin tocar respuestas.
   const { data } = await api.put<EditCuestionarioResponse>(
     `/editCuestionario/${questionnaireId}`,
     buildPersonPayload(person)
@@ -397,6 +433,7 @@ export async function updateRespondentPerson(questionnaireId: string | number, p
 }
 
 export async function saveSurveyAnswers(questionnaireId: string | number, answers: SurveyAnswers) {
+  // 💾 Persistencia remota del bloque de preguntas.
   const { data } = await api.post<ApiResponseEnvelope<unknown>>(
     `/storePreguntas/${questionnaireId}`,
     buildPreguntasPayload(answers)
@@ -405,11 +442,14 @@ export async function saveSurveyAnswers(questionnaireId: string | number, answer
 }
 
 export async function getRespondents(resolveMunicipality?: (sectionId: string) => string) {
+  // 📚 Descarga el listado remoto y ya lo devuelve adaptado para la app.
   const { data } = await api.get<ApiResponseEnvelope<ApiCuestionario[]>>('/getCuestionarios');
   return data.data.map((item) => mapApiCuestionarioToSurveyRecord(item, resolveMunicipality));
 }
 
 export async function findRespondentDuplicateByClaveElector(claveElector: string) {
+  // ⚠️ Como backend aún no valida duplicados por clave de elector,
+  // el frontend consulta y compara antes del alta.
   const normalizedClave = normalizeOptionValue(claveElector).toUpperCase();
   if (!normalizedClave) return null;
 
@@ -440,6 +480,7 @@ export async function getRespondentById(
   questionnaireId: string | number,
   resolveMunicipality?: (sectionId: string) => string
 ) {
+  // 👁️ Carga puntual de un cuestionario para preview o edición.
   const { data } = await api.get<ApiResponseEnvelope<ApiCuestionario>>(`/getCuestionario/${questionnaireId}`);
   return mapApiCuestionarioToSurveyRecord(data.data, resolveMunicipality);
 }

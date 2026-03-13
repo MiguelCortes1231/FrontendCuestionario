@@ -34,6 +34,7 @@ function PrivateRoute({ children }: { children: ReactElement }) {
 }
 
 export function AppRouter() {
+  // 🗺️ Tabla central de navegación de la aplicación.
   return (
     <Routes>
       {/* 🔓 Acceso público */}

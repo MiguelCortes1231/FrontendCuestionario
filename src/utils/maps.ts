@@ -30,6 +30,7 @@ export function buildGoogleMapsUrl(lat?: number, lng?: number): string | null {
  * Genera una liga más parecida a la experiencia nativa de Google Maps.
  */
 export function buildGoogleMapsPlaceUrl(lat?: number, lng?: number): string | null {
+  // 🧭 Suele abrir una experiencia más rica al usuario final que la URL básica.
   if (!isValidCoord(lat) || !isValidCoord(lng)) return null;
   return `https://www.google.com/maps/place/${lat},${lng}/@${lat},${lng},17z`;
 }

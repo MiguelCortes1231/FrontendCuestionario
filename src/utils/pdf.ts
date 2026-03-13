@@ -186,6 +186,8 @@ export async function exportNodeToPdf(
   filename: string,
   options: ExportPdfOptions = {}
 ) {
+  // 📄 Estrategia resumida del motor:
+  // medir -> cortar -> clonar -> rasterizar -> componer PDF -> descargar.
   // 🧮 Convierte proporciones reales del DOM a dimensiones físicas A4 en milímetros.
   const {
     marginMm = 10,

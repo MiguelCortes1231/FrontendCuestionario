@@ -12,12 +12,14 @@ const TOKEN_KEY = 'contigo_qroo_token';
 const USER_KEY = 'contigo_qroo_user';
 
 function decodeBase64Url(value: string) {
+  // 🔓 Convierte base64url a base64 estándar para poder decodificar el JWT.
   const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
   const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
   return atob(padded);
 }
 
 function decodeJwtPayload(token: string): JwtPayload | null {
+  // 🪪 Extrae solo el payload del token para leer vigencia localmente.
   try {
     const [, payload] = token.split('.');
     if (!payload) return null;
@@ -66,6 +68,7 @@ export const authStore = {
   },
   // 🧹 Borra cualquier rastro local de sesión.
   clear() {
+    // 🧹 Se limpia todo porque la app asume una sesión única por navegador.
     localStorage.clear();
   },
 };

@@ -19,7 +19,7 @@ export function buildWhatsAppUrl(phone?: string): string | null {
   const digits = normalizePhoneDigits(phone);
   if (!digits) return null;
 
-  // 🇲🇽 Si capturan 10 dígitos, asumimos número nacional de México para abrir WhatsApp.
+  // 🇲🇽 Regla operativa actual: 10 dígitos se interpretan como número mexicano.
   const normalized = digits.length === 10 ? `52${digits}` : digits;
   return `https://wa.me/${normalized}`;
 }

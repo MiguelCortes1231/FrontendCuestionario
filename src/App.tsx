@@ -13,6 +13,7 @@ import { authStore } from './store/auth.store';
 import { expireSession } from './services/auth.service';
 
 function SessionWatcher() {
+  // ⏲️ Programa el cierre de sesión automático de acuerdo con la expiración del JWT.
   const location = useLocation();
 
   useEffect(() => {
@@ -24,11 +25,13 @@ function SessionWatcher() {
     const remainingMs = expiresAt.getTime() - Date.now();
 
     if (remainingMs <= 0) {
+      // 🚨 Si ya venció, no esperamos ni un tick más.
       expireSession();
       return;
     }
 
     const timeoutId = window.setTimeout(() => {
+      // ⌛ Se agenda la expiración exacta para no depender de interacción del usuario.
       expireSession();
     }, remainingMs);
 
