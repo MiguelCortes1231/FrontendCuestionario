@@ -1,833 +1,662 @@
-# 📚🛠️ Documentación Completa del Proyecto
+# 📚🧠 PROJECT_DOCUMENTATION
 
 # 🌴 Contigo QROO Encuestas
 
-> Manual funcional + técnico + operativo + onboarding, explicado paso a paso, con estilo de documentación larga tipo guía de proyecto y pensado para que cualquier persona nueva pueda entender el sistema desde cero 💡
-
-## 👨‍💻 Responsable del proyecto
-
-**Ricardo Orlando Castillo Olivera** ✨
+> Manual maestro del proyecto: funcional, técnico, operativo, visual, explicativo y pensado para onboarding total 👶🚀✨  
+> Si alguien llega mañana sin contexto, este documento debería ayudarle a entender qué existe, por qué existe, cómo fluye y cómo moverlo con seguridad 🛠️🌐
 
 ---
 
-## 1. 🌟 Visión general
+## 🗺️ Índice general
 
-Este sistema existe para resolver un problema muy concreto:
-
-👉 levantar encuestas ciudadanas en campo de manera rápida, visual, profesional y con trazabilidad.
-
-No es solo un formulario bonito.
-
-Es una herramienta operativa que busca cubrir todo el ciclo:
-
-1. 🔐 acceso controlado
-2. 📍 ubicación del levantamiento
-3. 🧍 captura de datos de la persona
-4. 🪪 OCR opcional de credencial
-5. 🧠 respuesta de encuesta paginada
-6. 💾 guardado local del registro
-7. 📚 consulta posterior
-8. ✏️ edición de datos básicos
-9. 💬 contacto por WhatsApp
-10. 🗺️ revisión territorial por Maps
-11. 📄 exportación PDF
-12. 📊 lectura analítica vía dashboard
-
----
-
-## 2. 🎯 Objetivos de negocio
-
-### 🎯 Objetivo principal
-
-Tener una plataforma que permita a brigadas y encuestadores capturar entrevistas en campo con orden, rapidez y evidencia.
-
-### 🎯 Objetivos secundarios
-
-- 🧾 digitalizar la operación de encuestas
-- 🪪 reducir tiempos de captura con OCR
-- 📍 asociar cada entrevista a una ubicación real
-- 🧠 dividir la encuesta para que no sea pesada
-- 📚 consultar y corregir datos básicos del ciudadano
-- 📊 ver avance operativo de forma visual
-- 📄 producir evidencia exportable
+1. [🌟 Resumen ejecutivo](#-resumen-ejecutivo)
+2. [🎯 Problema que resuelve](#-problema-que-resuelve)
+3. [🧱 Arquitectura general](#-arquitectura-general)
+4. [🧭 Navegación de usuario](#-navegación-de-usuario)
+5. [🔐 Autenticación](#-autenticación)
+6. [🧍 Alta de persona](#-alta-de-persona)
+7. [🪪 OCR](#-ocr)
+8. [🧠 Cuestionario y respuestas](#-cuestionario-y-respuestas)
+9. [📚 Consulta de registros](#-consulta-de-registros)
+10. [✏️ Edición de datos básicos](#️-edición-de-datos-básicos)
+11. [👁️ Vista previa y PDF](#️-vista-previa-y-pdf)
+12. [📊 Dashboard](#-dashboard)
+13. [🌐 Servicios y contratos de API](#-servicios-y-contratos-de-api)
+14. [🧠 Reglas de dominio](#-reglas-de-dominio)
+15. [💾 Persistencia local y sesión](#-persistencia-local-y-sesión)
+16. [🗂️ Estructura del código](#️-estructura-del-código)
+17. [📄 Explicación archivo por archivo](#-explicación-archivo-por-archivo)
+18. [🧪 Desarrollo, build y mantenimiento](#-desarrollo-build-y-mantenimiento)
+19. [⚠️ Riesgos técnicos y próximos pasos](#️-riesgos-técnicos-y-próximos-pasos)
 
 ---
 
-## 3. 🧱 Stack tecnológico explicado
+## 🌟 Resumen ejecutivo
 
-### ⚛️ React 19
+Este proyecto es una aplicación frontend para levantamiento de encuestas ciudadanas en campo 📍
 
-Se usa para construir toda la interfaz de usuario por componentes.
+Su foco principal es:
 
-### 🔷 TypeScript
+- capturar personas 🧍
+- responder un cuestionario 🧠
+- guardar información en backend 🌐
+- consultar y corregir registros 📚✏️
+- visualizar estadísticas reales 📊
 
-Se usa para tipar datos, evitar errores y mantener orden estructural.
+El sistema ya no es una maqueta.
 
-### ⚡ Vite
-
-Se usa como bundler y servidor de desarrollo rápido.
-
-### 🎨 MUI
-
-Se usa como sistema de componentes visuales:
-
-- botones
-- tarjetas
-- diálogos
-- inputs
-- tablas
-- chips
-- tabs
-- stepper
-
-### 🌐 Axios
-
-Se usa para consumir endpoints del backend.
-
-### 🗺️ Leaflet + React Leaflet
-
-Se usan para mostrar los mapas de geolocalización.
-
-### 🪪 React Image Crop
-
-Se usa para recortar la credencial antes de enviarla al OCR.
-
-### 📄 html2canvas + jsPDF
-
-Se usan para generar el PDF desde una vista HTML.
-
-### 🔔 React Toastify
-
-Se usa para mostrar feedback visual rápido:
-
-- éxito ✅
-- error ❌
-- advertencia ⚠️
-- información ℹ️
+Ya conversa con APIs reales y ya resuelve gran parte del ciclo operativo del levantamiento ✅
 
 ---
 
-## 4. 🗂️ Estructura del proyecto, carpeta por carpeta
+## 🎯 Problema que resuelve
 
-```bash
-src/
-├── components/
-├── layouts/
-├── pages/
-├── routes/
-├── services/
-├── store/
-├── theme/
-├── types/
-└── utils/
+Antes de una herramienta como esta, una operación de campo suele sufrir por:
+
+- tiempo lento de captura 🐢
+- errores manuales ❌
+- duplicidad de registros ⚠️
+- poca trazabilidad territorial 🗺️
+- dificultad para revisar y corregir información 📚
+- falta de lectura ejecutiva rápida 📉
+
+**Contigo QROO Encuestas** busca corregir eso con un flujo digital unificado 💪
+
+---
+
+## 🧱 Arquitectura general
+
+```mermaid
+flowchart TD
+    A["🖥️ Frontend React"] --> B["🧭 Router"]
+    B --> C["📄 Pages"]
+    C --> D["🧩 Components"]
+    C --> E["🧠 Domain"]
+    C --> F["🌐 Services"]
+    F --> G["🔌 Backend API"]
+    F --> H["🪪 Servicio OCR"]
+    C --> I["🛠️ Utils"]
+    F --> J["💾 localStorage"]
+    C --> K["🎨 Theme"]
 ```
 
-### `src/components` 🧩
+### Explicación muy simple 👶
 
-Aquí viven componentes reutilizables.
-
-#### `common/`
-
-- `ConfirmDialog.tsx`
-  diálogo de confirmación reutilizable.
-
-#### `loading/`
-
-- `GlobalLoadingOverlay.tsx`
-  overlay global de carga.
-
-#### `map/`
-
-- `ReadonlyGeoMap.tsx`
-  mapa visual de solo lectura.
-
-#### `ui/`
-
-- `OcrScannerOverlay.tsx`
-  overlay visual del proceso OCR.
+- `Pages` = pantallas completas
+- `Components` = piezas reutilizables
+- `Domain` = reglas de negocio compartidas
+- `Services` = comunicación con APIs
+- `Utils` = helpers técnicos
+- `Store` = persistencia local
 
 ---
 
-### `src/layouts` 🏗️
-
-Aquí vive la estructura principal autenticada.
-
-- `MainLayout.tsx`
-  contiene sidebar, appbar y salida principal de rutas.
-
----
-
-### `src/pages` 📄
-
-Aquí viven las pantallas principales.
-
-#### `auth/`
-
-- `LoginPage.tsx`
-
-#### `dashboard/`
-
-- `DashboardPage.tsx`
-
-#### `respondents/`
-
-- `RespondentsListPage.tsx`
-- `RespondentPreviewPage.tsx`
-- `RespondentEditPage.tsx`
-
-#### `surveys/`
-
-- `SurveyNewPage.tsx`
-
----
-
-### `src/routes` 🧭
-
-- `AppRouter.tsx`
-  define rutas públicas, privadas y guard de sesión.
-
----
-
-### `src/services` 🌐
-
-Aquí está la lógica de comunicación con backend o servicios.
-
-- `auth.service.ts`
-- `http.ts`
-- `loading.service.ts`
-- `ocr.service.ts`
-- `sections.service.ts`
-- `catalogs.service.ts`
-
----
-
-### `src/store` 💾
-
-Persistencia local simple.
-
-- `auth.store.ts`
-- `respondents.store.ts`
-
----
-
-### `src/theme` 🎨
-
-Define identidad visual institucional.
-
-- `tokens.ts`
-- `theme.ts`
-
----
-
-### `src/types` 🧠
-
-Modelos tipados del dominio.
-
-- `auth.ts`
-- `person.ts`
-- `section.ts`
-- `survey.ts`
-
----
-
-### `src/utils` 🛠️
-
-Utilidades generales.
-
-- `geolocation.ts`
-- `pdf.ts`
-- `maps.ts`
-- `contact.ts`
-
----
-
-## 5. 🔐 Autenticación y sesión
-
-## 5.1 ¿Cómo funciona el login? 👶
-
-### Baby step 1
-
-El usuario entra a `/login`.
-
-### Baby step 2
-
-Captura:
-
-- usuario
-- contraseña
-
-### Baby step 3
-
-La app llama a:
-
-`POST /loginjwt`
-
-### Baby step 4
-
-Si el backend responde bien, guarda:
-
-- token JWT
-- usuario autenticado
-
-### Baby step 5
-
-La app redirige a `/dashboard`.
-
----
-
-## 5.2 ¿Dónde se guarda la sesión? 💾
-
-En `localStorage`, usando el store:
-
-- `contigo_qroo_token`
-- `contigo_qroo_user`
-
-Archivo principal:
-
-[auth.store.ts](/Users/ricardoorlandocastilloolivera/proyectHome/contigo-qroo-encuestas/src/store/auth.store.ts)
-
----
-
-## 5.3 ¿Cómo se protege la sesión? 🛡️
-
-La app ya valida:
-
-- que exista token
-- que el JWT tenga payload válido
-- que `nbf` no sea futuro
-- que `exp` no haya vencido
-
-Cuando el token expira:
-
-- 🧹 se limpia `localStorage`
-- 🔁 se redirige a `/login?reason=expired`
-- ⚠️ se informa al usuario que la sesión expiró
-
----
-
-## 5.4 Guard de rutas 🔒
-
-`AppRouter.tsx` usa `PrivateRoute`.
-
-Si no hay sesión válida:
-
-- no deja entrar a pantallas internas
-- redirige a login
-
----
-
-## 6. 📍 Geolocalización
-
-## 6.1 ¿Qué guarda?
-
-La app obtiene:
-
-- latitud
-- longitud
-- precisión
-- fecha de captura
-
-Modelo:
-
-```ts
-GeoSnapshot {
-  latitude: number;
-  longitude: number;
-  accuracy?: number;
-  capturedAt: string;
-}
+## 🧭 Navegación de usuario
+
+```mermaid
+flowchart LR
+    A["🔐 Login"] --> B["📊 Dashboard"]
+    B --> C["📝 Nueva encuesta"]
+    B --> D["📚 Listado de encuestados"]
+    D --> E["👁️ Preview"]
+    E --> F["✏️ Editar datos básicos"]
 ```
 
+### Rutas principales
+
+| Ruta | Rol |
+|------|-----|
+| `/login` | acceso inicial 🔐 |
+| `/dashboard` | panel ejecutivo 📊 |
+| `/surveys/new` | alta + encuesta 📝 |
+| `/respondents` | listado 📚 |
+| `/respondents/:id` | preview 👁️ |
+| `/respondents/:id/edit` | edición ✏️ |
+
 ---
 
-## 6.2 ¿Para qué sirve? 🧭
+## 🔐 Autenticación
 
-- mostrar el mapa de la entrevista
-- abrir Google Maps
-- alimentar el dashboard territorial
-- dejar trazabilidad operativa
+### ¿Cómo funciona? 👶
+
+1. usuario captura credenciales
+2. frontend manda `POST /loginjwt`
+3. backend responde `token` + `user`
+4. frontend guarda ambos en `localStorage`
+5. se habilitan rutas privadas
+
+### Archivos involucrados
+
+- `src/pages/auth/LoginPage.tsx`
+- `src/services/auth.service.ts`
+- `src/services/http.ts`
+- `src/store/auth.store.ts`
+- `src/routes/AppRouter.tsx`
+- `src/App.tsx`
+
+### Detalles importantes 🧠
+
+- `auth.store.ts` persiste token y usuario
+- `http.ts` inserta `Authorization: Bearer ...`
+- `SessionWatcher` en `App.tsx` agenda expiración exacta de sesión ⏲️
+- si expira la sesión, la app limpia storage y redirige a login
 
 ---
 
-## 7. 🧍 Alta de persona
+## 🧍 Alta de persona
 
-La pantalla de alta vive en:
+### Objetivo
 
-[SurveyNewPage.tsx](/Users/ricardoorlandocastilloolivera/proyectHome/contigo-qroo-encuestas/src/pages/surveys/SurveyNewPage.tsx)
+Capturar la identidad y datos básicos del ciudadano antes del cuestionario.
 
-## 7.1 Datos básicos que captura
+### Flujo operativo
 
-- folio
+```mermaid
+sequenceDiagram
+    participant U as 👤 Usuario
+    participant F as 🖥️ Frontend
+    participant B as 🌐 Backend
+
+    U->>F: Captura datos básicos
+    F->>F: Valida obligatorios
+    F->>F: Revisa duplicado por ClaveElector
+    F->>B: POST /storePersona
+    B-->>F: success + IdCuestionario + folio
+```
+
+### Campos obligatorios actuales 🚨
+
 - nombres
 - apellido paterno
-- apellido materno
-- teléfono ☎️
+- clave de elector
+- sección
+- calle / dirección
+- teléfono
+
+### Decisiones importantes
+
+- el folio no lo captura el usuario 🧾
+- el backend lo genera al alta
+- la fecha se normaliza antes de enviarse 📅
+- el frontend advierte duplicados por `ClaveElector` ⚠️
+
+### Archivos involucrados
+
+- `src/pages/surveys/SurveyNewPage.tsx`
+- `src/domain/person/personForm.ts`
+- `src/services/respondents.service.ts`
+- `src/services/sections.service.ts`
+
+---
+
+## 🪪 OCR
+
+### Objetivo
+
+Reducir tiempo de captura apoyándose en una fotografía del INE.
+
+### Flujo
+
+1. usuario sube imagen 📷
+2. recorta credencial ✂️
+3. se manda al OCR 🌐
+4. se intenta separar nombres 🧠
+5. frontend limpia y normaliza datos
+6. usuario revisa y corrige
+
+### Archivos involucrados
+
+- `src/pages/surveys/SurveyNewPage.tsx`
+- `src/services/ocr.service.ts`
+- `src/components/ui/OcrScannerOverlay.tsx`
+
+### Responsabilidades del OCR service
+
+- ejecutar OCR remoto
+- separar nombres y apellidos
+- normalizar sexo
+- intentar derivar fecha
+- limpiar colonia, espacios y formatos
+
+---
+
+## 🧠 Cuestionario y respuestas
+
+### Idea central
+
+La UI trabaja con textos amigables; el backend trabaja con enteros `Pregunta1..Pregunta13`.
+
+### Traducción ejemplo 🔁
+
+Si el frontend muestra:
+
+- `"Debe seguir recorriendo el estado y escuchando a la gente."`
+- `"Debe enfocarse solo en el trabajo de oficina."`
+- `"NS/NC"`
+
+entonces backend recibe:
+
+- `1`
+- `2`
+- `3`
+
+### Reglas relevantes
+
+- observaciones no es obligatoria 📝
+- puede enviarse vacía
+- las preguntas cerradas pueden quedar vacías
+- antes de completar, la app muestra advertencia si faltan respuestas ⚠️
+- el usuario puede continuar o regresar a la primera faltante 🎯
+
+### Archivos involucrados
+
+- `src/pages/surveys/SurveyNewPage.tsx`
+- `src/domain/surveys/questionnaire.ts`
+- `src/services/respondents.service.ts`
+- `src/types/survey.ts`
+
+---
+
+## 📚 Consulta de registros
+
+### Listado
+
+La pantalla de listado usa `GET /getCuestionarios` y ya ofrece:
+
+- búsqueda flexible 🔎
+- filtros por municipio, sección, resultado y fecha 📅
+- ordenamiento ↕️
+- vista tabla / tarjetas 📱💻
+
+### Preview
+
+La vista previa usa `GET /getCuestionario/{id}` y muestra:
+
+- datos administrativos
+- datos de persona
+- respuestas
+- mapa
+- exportación PDF
+
+### Edición
+
+La edición usa `PUT /editCuestionario/{id}` y permite cambiar datos básicos sin tocar respuestas.
+
+---
+
+## ✏️ Edición de datos básicos
+
+### ¿Qué sí se puede editar?
+
+- nombres
+- apellidos
+- teléfono
 - sexo
 - fecha de nacimiento
 - CURP
 - clave de elector
-- calle
-- número
+- dirección
 - colonia
-- código postal
+- CP
 - municipio
 - estado
 - sección
 - vigencia
 - tipo de credencial
 
----
+### ¿Qué no toca?
 
-## 7.2 Validación especial de teléfono 📱
+- respuestas del cuestionario ❌
 
-Cuando el usuario pulsa `Continuar a encuesta`:
+### Archivos involucrados
 
-### Si hay teléfono
-
-👉 avanza normal.
-
-### Si no hay teléfono
-
-👉 abre un modal de advertencia con dos opciones:
-
-- `Poner número de contacto`
-- `Continuar`
-
-La opción enfocada por defecto es:
-
-`Poner número de contacto`
-
-Y si la eligen:
-
-👉 el cursor vuelve al input del teléfono.
+- `src/pages/respondents/RespondentEditPage.tsx`
+- `src/domain/person/personForm.ts`
+- `src/services/respondents.service.ts`
 
 ---
 
-## 7.3 Sección electoral con autocomplete 🔎
+## 👁️ Vista previa y PDF
 
-La sección ya no es un select tradicional.
+### Vista previa
 
-Ahora usa `Autocomplete` para:
+Organiza la encuesta en un formato claro para lectura humana.
 
-- buscar por número
-- ver `IdSeccion · Municipio`
-- seleccionar más rápido
-- autocompletar municipio al elegir una sección
+### PDF
 
----
+`exportNodeToPdf`:
 
-## 8. 🪪 OCR de credencial
+- clona el DOM
+- detecta bloques
+- calcula cortes naturales
+- renderiza por página
+- descarga el PDF
 
-## 8.1 ¿Qué problema resuelve?
+### Archivos involucrados
 
-Evita capturar manualmente toda la credencial cuando ya existe una imagen.
-
-## 8.2 Flujo baby steps 👶
-
-1. el usuario cambia a modo `OCR`
-2. sube una imagen
-3. recorta la credencial
-4. la app manda el archivo al OCR
-5. la respuesta se transforma al modelo interno
-6. el formulario se llena automáticamente
+- `src/pages/respondents/RespondentPreviewPage.tsx`
+- `src/utils/pdf.ts`
 
 ---
 
-## 8.3 Qué hace bien este diseño ✅
+## 📊 Dashboard
 
-- no obliga a usar OCR
-- deja modo manual
-- conserva geolocalización
-- mantiene control visual del recorte
+### Qué busca resolver
 
----
+Dar lectura ejecutiva del avance real del proyecto sin abrir registro por registro 📊
 
-## 9. 🧠 Encuesta paginada
-
-La encuesta está dividida para que no se vea enorme ni cansada.
-
-## 9.1 Secciones actuales
-
-1. 🧩 Filtros e introducción
-2. 👀 Reconocimiento
-3. 📈 Desempeño
-4. 🏘️ Problemáticas y cierre
-
-## 9.2 ¿Por qué paginar?
-
-- mejora foco
-- reduce saturación visual
-- facilita captura en campo
-- disminuye errores
-
----
-
-## 10. 💾 Guardado local y estado mock
-
-## 10.1 Situación actual
-
-Como todavía faltan algunas APIs, parte del flujo trabaja con almacenamiento local.
-
-Esto significa:
-
-- la autenticación sí consume backend
-- el catálogo de secciones sí consume backend
-- varias operaciones de registros viven aún en `localStorage`
-
----
-
-## 10.2 ¿Dónde se guarda la encuesta?
-
-Archivo:
-
-[respondents.store.ts](/Users/ricardoorlandocastilloolivera/proyectHome/contigo-qroo-encuestas/src/store/respondents.store.ts)
-
-Llave:
-
-`contigo_qroo_respondents`
-
----
-
-## 10.3 ¿Qué sí se puede hacer aunque falten APIs? 🧪
-
-- guardar entrevistas
-- listarlas
-- verlas
-- exportarlas a PDF
-- editar datos básicos
-- abrir WhatsApp
-- abrir Google Maps
-
----
-
-## 11. 📚 Listado de encuestados
-
-Pantalla:
-
-[RespondentsListPage.tsx](/Users/ricardoorlandocastilloolivera/proyectHome/contigo-qroo-encuestas/src/pages/respondents/RespondentsListPage.tsx)
-
-## 11.1 ¿Qué permite?
-
-- buscar
-- filtrar
-- ordenar
-- paginar
-- abrir detalle
-- editar datos básicos
-- abrir WhatsApp
-- abrir Maps
-
----
-
-## 11.2 Responsividad 📱💻
-
-La pantalla tiene dos comportamientos:
-
-### En escritorio 🖥️
-
-Usa tabla compacta.
-
-### En tablet y smartphone 📱
-
-Usa tarjetas responsive.
-
-Esto evita que la experiencia se rompa cuando no cabe una tabla completa.
-
----
-
-## 11.3 WhatsApp 💬
-
-Se genera una URL:
-
-```ts
-https://wa.me/NUMERO
-```
-
-Si detecta 10 dígitos, asume número de México y antepone `52`.
-
----
-
-## 11.4 Google Maps 📍
-
-Se genera una URL:
-
-```ts
-https://www.google.com/maps/place/lat,lng/@lat,lng,17z
-```
-
-Así abre ubicación con marcador.
-
----
-
-## 12. ✏️ Edición básica del encuestado
-
-Pantalla:
-
-[RespondentEditPage.tsx](/Users/ricardoorlandocastilloolivera/proyectHome/contigo-qroo-encuestas/src/pages/respondents/RespondentEditPage.tsx)
-
-## 12.1 Regla de negocio importante
-
-✅ Se pueden editar datos básicos de la persona.
-
-❌ No se pueden editar respuestas de la encuesta.
-
-Esto protege la integridad del levantamiento.
-
----
-
-## 13. 👁️ Vista previa de encuesta
-
-Pantalla:
-
-[RespondentPreviewPage.tsx](/Users/ricardoorlandocastilloolivera/proyectHome/contigo-qroo-encuestas/src/pages/respondents/RespondentPreviewPage.tsx)
-
-## 13.1 ¿Qué muestra?
-
-- datos administrativos
-- datos de la persona
-- teléfono
-- domicilio
-- mapa de levantamiento
-- respuestas agrupadas
-
-## 13.2 Acciones
-
-- volver
-- editar
-- descargar PDF
-- abrir Maps
-
----
-
-## 14. 📄 Exportación PDF
-
-El PDF se genera desde la vista previa.
-
-### ¿Qué incluye?
-
-- resultado
-- folio
-- datos administrativos
-- datos personales
-- mapa
-- respuestas
-
-### ¿Por qué es útil?
-
-- evidencia
-- archivo
-- envío
-- impresión
-
----
-
-## 15. 📊 Dashboard
-
-Pantalla:
-
-[DashboardPage.tsx](/Users/ricardoorlandocastilloolivera/proyectHome/contigo-qroo-encuestas/src/pages/dashboard/DashboardPage.tsx)
-
-## 15.1 ¿Qué muestra?
+### Qué muestra hoy
 
 - encuestas totales
 - año actual
 - municipios activos
-- cobertura de secciones
-- tasa de entrevistas completas
+- secciones activas
+- entrevistas completas
 - puntos geolocalizados
+- municipio líder
 - tendencia mensual
-- acumulado por año
-- ranking municipal
-- top de secciones
+- acumulado anual
+- ranking municipal de Quintana Roo
+- estatus de entrevistas
+- top secciones
 - mapa territorial
 
----
+### Fuente real de datos
 
-## 15.2 Lógica territorial 🌴
+- cuestionarios remotos por `getCuestionarios`
+- catálogo real de secciones por `getSecciones`
 
-El dashboard ya contempla los 11 municipios de Quintana Roo:
+### Nota importante
 
-- Othón P. Blanco
-- Benito Juárez
-- Solidaridad
-- Tulum
-- Cozumel
-- Isla Mujeres
-- Lázaro Cárdenas
-- Felipe Carrillo Puerto
-- José María Morelos
-- Bacalar
-- Puerto Morelos
+El total de secciones **no** está hardcodeado.
+
+Se toma del catálogo real ✅
 
 ---
 
-## 16. 🎨 Identidad visual
+## 🌐 Servicios y contratos de API
 
-La aplicación trabaja sobre un lenguaje visual institucional cercano a Morena:
+## `src/services/http.ts`
 
-- vino / morena oscuro
-- dorado suave
-- grises cálidos
-- fondos claros
+Responsabilidades:
 
-Archivos clave:
+- crear cliente Axios
+- fijar `baseURL`
+- insertar token
+- activar/desactivar loader global
+- expirar sesión en 401
 
-- [tokens.ts](/Users/ricardoorlandocastilloolivera/proyectHome/contigo-qroo-encuestas/src/theme/tokens.ts)
-- [theme.ts](/Users/ricardoorlandocastilloolivera/proyectHome/contigo-qroo-encuestas/src/theme/theme.ts)
+## `src/services/respondents.service.ts`
 
----
-
-## 17. 🧠 Modelos principales
-
-## 17.1 `PersonFormData`
-
-Representa a la persona entrevistada.
-
-## 17.2 `SurveyAnswers`
-
-Representa todas las respuestas del cuestionario.
-
-## 17.3 `SurveyRecord`
-
-Representa el registro completo final.
-
-Incluye:
-
-- metadata
-- persona
-- respuestas
-- tiempos
-- geolocalización
-
----
-
-## 18. 🌐 Servicios principales
-
-## `http.ts`
-
-Cliente Axios central.
+Es el servicio más importante del dominio de cuestionarios.
 
 Hace:
 
-- base URL
-- inyección de token
-- control de loader
-- detección de `401`
+- alta de persona
+- edición
+- listado
+- detalle
+- guardado de respuestas
+- detección de duplicados
+- adaptación entre backend y frontend
 
-## `auth.service.ts`
-
-Hace:
-
-- login
-- logout
-- expiración forzada de sesión
-
-## `ocr.service.ts`
+## `src/services/sections.service.ts`
 
 Hace:
 
-- escaneo OCR
-- transformación de respuesta
-- mapeo al modelo interno
+- leer catálogo de secciones
+- construir mapa sección → municipio
 
-## `sections.service.ts`
+## `src/services/ocr.service.ts`
 
 Hace:
 
-- consulta del catálogo de secciones
+- OCR
+- separación de nombres
+- heurísticas de limpieza
+- normalización
 
 ---
 
-## 19. 👶 Baby steps para una persona nueva en el proyecto
+## 🧠 Reglas de dominio
 
-Si hoy entra una persona nueva al equipo, este sería el camino ideal:
+### Dominio persona
 
-### Paso 1
+Archivo:
 
-Leer el [README.md](/Users/ricardoorlandocastilloolivera/proyectHome/contigo-qroo-encuestas/README.md) 🧭
+- `src/domain/person/personForm.ts`
 
-### Paso 2
+Reglas:
 
-Leer esta documentación completa 📚
+- validación de obligatorios
+- detección rápida de faltantes
 
-### Paso 3
+### Dominio cuestionario
 
-Levantar el proyecto:
+Archivo:
+
+- `src/domain/surveys/questionnaire.ts`
+
+Reglas:
+
+- metadata de preguntas por página
+- detección de preguntas vacías
+- apoyo a navegación con foco
+
+---
+
+## 💾 Persistencia local y sesión
+
+### Claves conocidas
+
+- `contigo_qroo_token`
+- `contigo_qroo_user`
+- `contigo_qroo_respondents`
+
+### Qué contienen
+
+- token JWT
+- usuario autenticado
+- registros locales históricos / compatibilidad
+
+### Nota operativa
+
+La app ya depende mucho más de APIs reales que antes.  
+La persistencia local sigue siendo útil como soporte o legado de ciertas partes del sistema.
+
+---
+
+## 🗂️ Estructura del código
+
+### `src/components/`
+
+Piezas UI reutilizables.
+
+### `src/domain/`
+
+Reglas compartidas del negocio.
+
+### `src/layouts/`
+
+Layout autenticado.
+
+### `src/pages/`
+
+Pantallas completas.
+
+### `src/routes/`
+
+Navegación.
+
+### `src/services/`
+
+Integraciones externas.
+
+### `src/store/`
+
+Persistencia local.
+
+### `src/theme/`
+
+Diseño institucional.
+
+### `src/types/`
+
+Contratos TypeScript.
+
+### `src/utils/`
+
+Helpers de soporte técnico.
+
+---
+
+## 📄 Explicación archivo por archivo
+
+### Arranque 🚀
+
+- `src/main.tsx`
+  inicia React, tema, router y toasts
+
+- `src/App.tsx`
+  monta router, overlay global y watcher de sesión
+
+### Navegación 🧭
+
+- `src/routes/AppRouter.tsx`
+  decide qué rutas son públicas o privadas
+
+- `src/layouts/MainLayout.tsx`
+  define drawer, appbar y zona principal autenticada
+
+### Login 🔐
+
+- `src/pages/auth/LoginPage.tsx`
+  pantalla de login
+
+- `src/services/auth.service.ts`
+  login/logout/expireSession
+
+- `src/store/auth.store.ts`
+  acceso a token y usuario
+
+### Encuesta 📝
+
+- `src/pages/surveys/SurveyNewPage.tsx`
+  flujo operativo más grande del sistema
+
+- `src/domain/person/personForm.ts`
+  validación obligatoria de persona
+
+- `src/domain/surveys/questionnaire.ts`
+  metadata de preguntas y faltantes
+
+- `src/services/respondents.service.ts`
+  integración con APIs reales del cuestionario
+
+- `src/services/ocr.service.ts`
+  OCR y limpieza
+
+- `src/services/sections.service.ts`
+  catálogo de secciones
+
+### Respondents 📚
+
+- `src/pages/respondents/RespondentsListPage.tsx`
+- `src/pages/respondents/RespondentPreviewPage.tsx`
+- `src/pages/respondents/RespondentEditPage.tsx`
+
+### Dashboard 📊
+
+- `src/pages/dashboard/DashboardPage.tsx`
+
+### UI reusable 🧩
+
+- `src/components/common/ConfirmDialog.tsx`
+- `src/components/loading/GlobalLoadingOverlay.tsx`
+- `src/components/map/ReadonlyGeoMap.tsx`
+- `src/components/ui/OcrScannerOverlay.tsx`
+
+### Utilidades 🛠️
+
+- `src/utils/contact.ts`
+- `src/utils/geolocation.ts`
+- `src/utils/maps.ts`
+- `src/utils/pdf.ts`
+
+### Diseño 🎨
+
+- `src/theme/tokens.ts`
+- `src/theme/theme.ts`
+- `src/index.css`
+- `src/App.css`
+
+### Configuración ⚙️
+
+- `vite.config.ts`
+- `eslint.config.js`
+- `package.json`
+
+---
+
+## 🧪 Desarrollo, build y mantenimiento
+
+### Scripts
 
 ```bash
-npm install
 npm run dev
+npm run build
+npm run preview
+npm run lint
 ```
 
-### Paso 4
+### Recomendación de rutina profesional 👨‍💻✨
 
-Entrar al login 🔐
+1. hacer cambio
+2. revisar tipado
+3. correr build
+4. revisar pantallas tocadas
+5. validar APIs impactadas
 
-### Paso 5
+### Qué revisar si algo falla ⚠️
 
-Probar el flujo completo:
-
-1. dashboard
-2. nueva encuesta
-3. alta de persona
-4. encuesta
-5. guardar
-6. listado
-7. detalle
-8. PDF
-
-### Paso 6
-
-Leer estos archivos primero:
-
-- [AppRouter.tsx](/Users/ricardoorlandocastilloolivera/proyectHome/contigo-qroo-encuestas/src/routes/AppRouter.tsx)
-- [MainLayout.tsx](/Users/ricardoorlandocastilloolivera/proyectHome/contigo-qroo-encuestas/src/layouts/MainLayout.tsx)
-- [SurveyNewPage.tsx](/Users/ricardoorlandocastilloolivera/proyectHome/contigo-qroo-encuestas/src/pages/surveys/SurveyNewPage.tsx)
-- [RespondentsListPage.tsx](/Users/ricardoorlandocastilloolivera/proyectHome/contigo-qroo-encuestas/src/pages/respondents/RespondentsListPage.tsx)
-- [DashboardPage.tsx](/Users/ricardoorlandocastilloolivera/proyectHome/contigo-qroo-encuestas/src/pages/dashboard/DashboardPage.tsx)
+- token vencido
+- permisos de geolocalización
+- disponibilidad del OCR
+- conectividad con backend
+- shape de respuestas del backend
+- consistencia del catálogo de secciones
 
 ---
 
-## 20. 🚧 Áreas pendientes o evolucionables
+## ⚠️ Riesgos técnicos y próximos pasos
 
-Estas son áreas naturales de evolución:
+### Riesgos actuales
 
-- 🌐 reemplazar persistencia local por APIs reales de registros
-- 🧪 unificar mocks temporales con contratos definitivos
-- 🗃️ sincronización remota de entrevistas
-- 📈 más filtros analíticos en dashboard
-- 🧠 validaciones más estrictas
-- 🔍 búsqueda avanzada
-- 🧾 catálogos remotos adicionales
-- 📦 code splitting para bajar tamaño del bundle
+- parte del conocimiento del cuestionario aún vive del lado frontend 🎛️
+- validación de duplicados aún no es nativa de backend ⚠️
+- el archivo `SurveyNewPage.tsx` sigue siendo una pantalla grande 🧱
+- el bundle final aún marca chunks grandes en build 📦
 
----
+### Próximos pasos naturales
 
-## 21. 🛡️ Consideraciones importantes
-
-- No se deben modificar respuestas desde edición básica.
-- La geolocalización es parte crítica de trazabilidad.
-- El token expira y la sesión se limpia automáticamente.
-- El proyecto aún convive con flujos mock mientras llegan APIs faltantes.
+- partir `SurveyNewPage.tsx` en subcomponentes o hooks
+- mover más reglas del negocio a `domain/`
+- agregar filtros globales más fuertes al dashboard
+- robustecer validaciones también del lado backend
+- mejorar code splitting
 
 ---
 
-## 22. ✅ Conclusión
+## 💚 Cierre
 
-Este proyecto ya tiene una base muy sólida, muy operativa y bastante profesional. No es un demo simple: ya contiene autenticación, seguridad de sesión, captura en campo, OCR, geolocalización, analítica, edición controlada y exportación.
+Este proyecto ya tiene una base seria, útil y bastante profesional para operación real 🚀🌴
 
-La documentación fue preparada para que cualquier persona pueda:
+Lo importante no es solo que “se vea bonito”, sino que:
 
-- entender qué hace el sistema
-- entender cómo está estructurado
-- entender qué ya está real
-- entender qué todavía es temporal/mock
-- empezar a trabajar sin perderse
+- funciona ✅
+- ya consume APIs reales ✅
+- ya tiene trazabilidad ✅
+- ya tiene lectura estadística ✅
+- ya tiene varias decisiones correctas de dominio y arquitectura ✅
 
----
-
-## 🙌 Créditos finales
-
-Proyecto documentado para uso profesional por:
-
-**Ricardo Orlando Castillo Olivera** 🌟📋🗳️
+Si alguien nuevo entra al proyecto, debería poder usar este documento como mapa principal de onboarding 🧭📚✨
