@@ -10,6 +10,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
+  Alert,
   Box,
   Button,
   Card,
@@ -40,14 +41,29 @@ import SearchIcon from '@mui/icons-material/Search';
 import FilterAltIcon from '@mui/icons-material/FilterAlt';
 import ClearIcon from '@mui/icons-material/Clear';
 import SortIcon from '@mui/icons-material/Sort';
-import { respondentsStore } from '../../store/respondents.store';
+import type { SurveyRecord } from '../../types/survey';
 import { buildWhatsAppUrl, formatPhone } from '../../utils/contact';
 import { buildGoogleMapsPlaceUrl } from '../../utils/maps';
+import { getSecciones } from '../../services/sections.service';
+import { getRespondents } from '../../services/respondents.service';
 
 const PAGE_SIZE = 15;
 
 type SortField = 'createdAt' | 'folio' | 'nombre' | 'seccion' | 'municipio';
 type SortDirection = 'asc' | 'desc';
+
+function matchesSelectedDate(value: string, selectedDate: string) {
+  if (!selectedDate) return true;
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return false;
+
+  const year = parsed.getFullYear();
+  const month = String(parsed.getMonth() + 1).padStart(2, '0');
+  const day = String(parsed.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}` === selectedDate;
+}
 
 function normalizeText(value: unknown) {
   return String(value ?? '')
@@ -57,7 +73,7 @@ function normalizeText(value: unknown) {
     .trim();
 }
 
-function buildFullName(item: ReturnType<typeof respondentsStore.list>[number]) {
+function buildFullName(item: SurveyRecord) {
   return [
     item.person.nombres,
     item.person.apellidoPaterno,
@@ -83,7 +99,7 @@ function fuzzyIncludes(text: string, query: string) {
   return queryIndex === query.length;
 }
 
-function matchesApproximateSearch(item: ReturnType<typeof respondentsStore.list>[number], rawQuery: string) {
+function matchesApproximateSearch(item: SurveyRecord, rawQuery: string) {
   const query = normalizeText(rawQuery);
   if (!query) return true;
 
@@ -134,10 +150,40 @@ export default function RespondentsListPage() {
   const [municipioFilter, setMunicipioFilter] = useState('');
   const [seccionFilter, setSeccionFilter] = useState('');
   const [resultadoFilter, setResultadoFilter] = useState('');
+  const [fechaFilter, setFechaFilter] = useState('');
   const [sortField, setSortField] = useState<SortField>('createdAt');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  const [items, setItems] = useState<SurveyRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
-  const items = respondentsStore.list();
+  useEffect(() => {
+    let alive = true;
+
+    (async () => {
+      try {
+        setLoading(true);
+        setLoadError(false);
+        const sections = await getSecciones();
+        const sectionMap = new Map(
+          sections.map((section) => [String(section.IdSeccion), section.Municipio])
+        );
+        const data = await getRespondents((sectionId) => sectionMap.get(sectionId) ?? '');
+        if (!alive) return;
+        setItems(data);
+      } catch {
+        if (!alive) return;
+        setLoadError(true);
+      } finally {
+        if (!alive) return;
+        setLoading(false);
+      }
+    })();
+
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   // 🧾 Catálogos derivados para filtros dinámicos.
   const municipios = useMemo(
@@ -171,6 +217,7 @@ export default function RespondentsListPage() {
     // 3. ordenamiento estable
     const result = items
       .filter((item) => matchesApproximateSearch(item, search))
+      .filter((item) => matchesSelectedDate(item.createdAt, fechaFilter))
       .filter((item) => !municipioFilter || item.person.municipio === municipioFilter)
       .filter((item) => !seccionFilter || String(item.person.seccion) === seccionFilter)
       .filter((item) => !resultadoFilter || item.answers.resultado === resultadoFilter);
@@ -194,7 +241,7 @@ export default function RespondentsListPage() {
           );
       }
     });
-  }, [items, municipioFilter, resultadoFilter, search, seccionFilter, sortDirection, sortField]);
+  }, [fechaFilter, items, municipioFilter, resultadoFilter, search, seccionFilter, sortDirection, sortField]);
 
   const paged = useMemo(
     () => filteredItems.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
@@ -202,12 +249,12 @@ export default function RespondentsListPage() {
   );
 
   const totalPages = Math.max(1, Math.ceil(filteredItems.length / PAGE_SIZE));
-  const activeFiltersCount = [search, municipioFilter, seccionFilter, resultadoFilter].filter(Boolean).length;
+  const activeFiltersCount = [search, municipioFilter, seccionFilter, resultadoFilter, fechaFilter].filter(Boolean).length;
 
   useEffect(() => {
     // 🔄 Cuando cambian búsqueda, filtros u orden, regresamos a la página 1.
     setPage(1);
-  }, [search, municipioFilter, seccionFilter, resultadoFilter, sortField, sortDirection]);
+  }, [search, municipioFilter, seccionFilter, resultadoFilter, fechaFilter, sortField, sortDirection]);
 
   const clearFilters = () => {
     // 🧹 Reseteo rápido para volver al dataset completo.
@@ -215,6 +262,7 @@ export default function RespondentsListPage() {
     setMunicipioFilter('');
     setSeccionFilter('');
     setResultadoFilter('');
+    setFechaFilter('');
     setSortField('createdAt');
     setSortDirection('desc');
   };
@@ -227,6 +275,12 @@ export default function RespondentsListPage() {
           Búsqueda inteligente, filtros útiles y ordenamiento para revisar levantamientos con más rapidez ✨
         </Typography>
       </Box>
+
+      {loadError && (
+        <Alert severity="error">
+          No se pudo cargar el listado desde la API.
+        </Alert>
+      )}
 
       <Card
         sx={{
@@ -250,7 +304,7 @@ export default function RespondentsListPage() {
                   Buscar, filtrar y ordenar 🔎
                 </Typography>
                 <Chip
-                  label={`${filteredItems.length} resultado${filteredItems.length === 1 ? '' : 's'}`}
+                  label={loading ? 'Cargando...' : `${filteredItems.length} resultado${filteredItems.length === 1 ? '' : 's'}`}
                   color="primary"
                   variant="outlined"
                 />
@@ -290,6 +344,15 @@ export default function RespondentsListPage() {
                   ),
                 }}
                 sx={{ flex: 2 }}
+              />
+
+              <TextField
+                label="Fecha 📅"
+                type="date"
+                value={fechaFilter}
+                onChange={(e) => setFechaFilter(e.target.value)}
+                InputLabelProps={{ shrink: true }}
+                sx={{ flex: 1, minWidth: { md: 220 } }}
               />
 
               <TextField

@@ -38,11 +38,14 @@ export interface SurveyAnswers {
 // 📄 Registro completo persistido al terminar una entrevista.
 export interface SurveyRecord {
   id: string;
+  questionnaireId: number;
   createdAt: string;
+  updatedAt: string;
   startedAt: string;
   finishedAt: string;
   interviewerName: string;
   sectionPriorityLabel: string;
+  apiStatusId: number;
   person: PersonFormData;
   answers: SurveyAnswers;
 }

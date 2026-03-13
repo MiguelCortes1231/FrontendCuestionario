@@ -10,7 +10,7 @@
  * Esto ayuda a mantener integridad operativa mientras se corrigen
  * errores de captura como nombre, teléfono o domicilio.
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Alert,
@@ -27,8 +27,9 @@ import {
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import SaveIcon from '@mui/icons-material/Save';
 import { toast } from 'react-toastify';
-import { respondentsStore } from '../../store/respondents.store';
 import type { PersonFormData } from '../../types/person';
+import { getSecciones } from '../../services/sections.service';
+import { getRespondentById, updateRespondentPerson } from '../../services/respondents.service';
 
 const formGridSx = {
   width: '100%',
@@ -46,19 +47,82 @@ const formGridSx = {
   },
 } as const;
 
+type PersonErrorMap = Partial<Record<'nombres' | 'apellidoPaterno' | 'claveElector' | 'seccion' | 'calle' | 'telefono', string>>;
+
+function validateRequiredPersonFields(person: PersonFormData | null): PersonErrorMap {
+  if (!person) {
+    return {
+      nombres: 'Es requerido',
+      apellidoPaterno: 'Es requerido',
+      claveElector: 'Es requerido',
+      seccion: 'Es requerido',
+      calle: 'Es requerido',
+      telefono: 'Es requerido',
+    };
+  }
+
+  return {
+    nombres: person.nombres.trim() ? '' : 'Es requerido',
+    apellidoPaterno: person.apellidoPaterno.trim() ? '' : 'Es requerido',
+    claveElector: person.claveElector.trim() ? '' : 'Es requerido',
+    seccion: person.seccion.trim() ? '' : 'Es requerido',
+    calle: person.calle.trim() ? '' : 'Es requerido',
+    telefono: person.telefono.trim() ? '' : 'Es requerido',
+  };
+}
+
 export default function RespondentEditPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const record = id ? respondentsStore.findById(id) : null;
+  const [person, setPerson] = useState<PersonFormData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  const [showErrors, setShowErrors] = useState(false);
 
-  const [person, setPerson] = useState<PersonFormData | null>(record?.person ?? null);
+  useEffect(() => {
+    let alive = true;
 
-  const canSave = useMemo(
-    () => !!person?.nombres.trim() && !!person?.apellidoPaterno.trim() && !!person?.seccion.trim(),
-    [person]
-  );
+    if (!id) {
+      setLoadError(true);
+      setLoading(false);
+      return () => {
+        alive = false;
+      };
+    }
 
-  if (!record || !person) {
+    (async () => {
+      try {
+        setLoading(true);
+        setLoadError(false);
+        const sections = await getSecciones();
+        const sectionMap = new Map(
+          sections.map((section) => [String(section.IdSeccion), section.Municipio])
+        );
+        const record = await getRespondentById(id, (sectionId) => sectionMap.get(sectionId) ?? '');
+        if (!alive) return;
+        setPerson(record.person);
+      } catch {
+        if (!alive) return;
+        setLoadError(true);
+      } finally {
+        if (!alive) return;
+        setLoading(false);
+      }
+    })();
+
+    return () => {
+      alive = false;
+    };
+  }, [id]);
+
+  const personErrors = useMemo(() => validateRequiredPersonFields(person), [person]);
+
+  if (loading) {
+    return <Alert severity="info">Cargando datos del encuestado...</Alert>;
+  }
+
+  if (loadError || !id || !person) {
     return <Alert severity="warning">No se encontró el encuestado que deseas editar.</Alert>;
   }
 
@@ -68,9 +132,24 @@ export default function RespondentEditPage() {
   };
 
   const handleSave = () => {
-    respondentsStore.updatePerson(record.id, person);
-    toast.success('Datos básicos actualizados correctamente ✅');
-    navigate(`/respondents/${record.id}`);
+    void (async () => {
+      setShowErrors(true);
+      if (Object.values(personErrors).some(Boolean)) {
+        toast.warning('Completa los campos obligatorios marcados en rojo ⚠️');
+        return;
+      }
+
+      try {
+        setSaving(true);
+        await updateRespondentPerson(id, person);
+        toast.success('Datos básicos actualizados correctamente ✅');
+        navigate(`/respondents/${id}`);
+      } catch {
+        toast.error('No se pudo actualizar la información de la persona ❌');
+      } finally {
+        setSaving(false);
+      }
+    })();
   };
 
   return (
@@ -89,7 +168,7 @@ export default function RespondentEditPage() {
           <Button
             variant="outlined"
             startIcon={<ArrowBackIcon />}
-            onClick={() => navigate(`/respondents/${record.id}`)}
+            onClick={() => navigate(`/respondents/${id}`)}
             sx={{ borderRadius: 999 }}
           >
             Volver
@@ -98,7 +177,7 @@ export default function RespondentEditPage() {
             variant="contained"
             startIcon={<SaveIcon />}
             onClick={handleSave}
-            disabled={!canSave}
+            disabled={saving}
             sx={{ borderRadius: 999, fontWeight: 800 }}
           >
             Guardar cambios
@@ -132,6 +211,8 @@ export default function RespondentEditPage() {
                 label="Nombres"
                 value={person.nombres}
                 onChange={(e) => updateField('nombres', e.target.value)}
+                error={showErrors && !!personErrors.nombres}
+                helperText={showErrors && personErrors.nombres ? personErrors.nombres : ' '}
               />
             </Grid>
             <Grid item xs={12} md={4}>
@@ -139,6 +220,8 @@ export default function RespondentEditPage() {
                 label="Apellido paterno"
                 value={person.apellidoPaterno}
                 onChange={(e) => updateField('apellidoPaterno', e.target.value)}
+                error={showErrors && !!personErrors.apellidoPaterno}
+                helperText={showErrors && personErrors.apellidoPaterno ? personErrors.apellidoPaterno : ' '}
               />
             </Grid>
             <Grid item xs={12} md={4}>
@@ -153,6 +236,8 @@ export default function RespondentEditPage() {
                 label="Teléfono"
                 value={person.telefono ?? ''}
                 onChange={(e) => updateField('telefono', e.target.value.replace(/[^\d+()\-\s]/g, ''))}
+                error={showErrors && !!personErrors.telefono}
+                helperText={showErrors && personErrors.telefono ? personErrors.telefono : ' '}
               />
             </Grid>
             <Grid item xs={12} md={4}>
@@ -188,6 +273,8 @@ export default function RespondentEditPage() {
                 label="Clave de elector"
                 value={person.claveElector}
                 onChange={(e) => updateField('claveElector', e.target.value.toUpperCase())}
+                error={showErrors && !!personErrors.claveElector}
+                helperText={showErrors && personErrors.claveElector ? personErrors.claveElector : ' '}
               />
             </Grid>
             <Grid item xs={12} md={8}>
@@ -195,6 +282,8 @@ export default function RespondentEditPage() {
                 label="Calle"
                 value={person.calle}
                 onChange={(e) => updateField('calle', e.target.value)}
+                error={showErrors && !!personErrors.calle}
+                helperText={showErrors && personErrors.calle ? personErrors.calle : ' '}
               />
             </Grid>
             <Grid item xs={12} md={4}>
@@ -237,6 +326,8 @@ export default function RespondentEditPage() {
                 label="Sección"
                 value={person.seccion}
                 onChange={(e) => updateField('seccion', e.target.value)}
+                error={showErrors && !!personErrors.seccion}
+                helperText={showErrors && personErrors.seccion ? personErrors.seccion : ' '}
               />
             </Grid>
             <Grid item xs={12} md={6}>

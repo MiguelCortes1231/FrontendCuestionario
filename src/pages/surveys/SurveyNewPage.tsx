@@ -18,6 +18,9 @@ import {
   CardContent,
   Chip,
   CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
   Divider,
   Grid,
   MenuItem,
@@ -38,9 +41,9 @@ import UploadFileIcon from '@mui/icons-material/UploadFile';
 import SearchIcon from '@mui/icons-material/Search';
 import ImageIcon from '@mui/icons-material/Image';
 import BadgeIcon from '@mui/icons-material/Badge';
+import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded';
 import { useNavigate } from 'react-router-dom';
 import ReactCrop, { centerCrop, makeAspectCrop, type Crop, type PixelCrop } from 'react-image-crop';
-import { v4 as uuid } from 'uuid';
 import { toast } from 'react-toastify';
 import 'react-image-crop/dist/ReactCrop.css';
 
@@ -50,13 +53,19 @@ import OcrScannerOverlay from '../../components/ui/OcrScannerOverlay';
 
 import { getBrowserLocation } from '../../utils/geolocation';
 import type { GeoSnapshot, PersonFormData } from '../../types/person';
-import type { SurveyAnswers, SurveyRecord } from '../../types/survey';
+import type { SurveyAnswers } from '../../types/survey';
 import type { SectionItem } from '../../types/section';
 
-import { respondentsStore } from '../../store/respondents.store';
-import { authStore } from '../../store/auth.store';
 import { scanIneAndSplit } from '../../services/ocr.service';
 import { getSecciones } from '../../services/sections.service';
+import {
+  buildPersonFingerprint,
+  createRespondentPerson,
+  findRespondentDuplicateByClaveElector,
+  saveSurveyAnswers,
+  updateRespondentPerson,
+  type DuplicateRespondentMatch,
+} from '../../services/respondents.service';
 
 const surveyPages = [
   // 📚 Definición de páginas temáticas para dividir el cuestionario.
@@ -148,6 +157,36 @@ const personGridSx = {
   },
 } as const;
 
+type MissingAnswerItem = {
+  field: keyof SurveyAnswers;
+  page: number;
+  questionNumber: string;
+  label: string;
+};
+
+const surveyQuestionMeta: Array<MissingAnswerItem> = [
+  { field: 'hasValidCredential', page: 1, questionNumber: '1', label: 'Credencial vigente' },
+  { field: 'sexoObservado', page: 1, questionNumber: '2', label: 'Sexo observado' },
+  { field: 'rangoEdad', page: 1, questionNumber: '3', label: 'Rango de edad' },
+  { field: 'escolaridad', page: 1, questionNumber: '4', label: 'Escolaridad' },
+  { field: 'conoceGino', page: 2, questionNumber: '5', label: '¿Conoce a Gino Segura?' },
+  { field: 'conoceLatifa', page: 2, questionNumber: '5', label: '¿Conoce a Latifa Martínez?' },
+  { field: 'conocePalazuelos', page: 2, questionNumber: '5', label: '¿Conoce a Roberto Palazuelos?' },
+  { field: 'importanciaPoliticos', page: 2, questionNumber: '6', label: 'Importancia del contacto directo' },
+  { field: 'ginoDebeSeguir', page: 3, questionNumber: '7', label: 'Labor de cercanía de Gino Segura' },
+  { field: 'opinionGino', page: 3, questionNumber: '8', label: 'Opinión de Gino Segura' },
+  { field: 'atributoGino', page: 3, questionNumber: '9', label: 'Principal atributo asociado' },
+  { field: 'problemaNacional', page: 4, questionNumber: '10', label: 'Problemática nacional' },
+  { field: 'problemaLocal', page: 4, questionNumber: '11', label: 'Problemática local' },
+];
+
+function findMissingSurveyAnswers(answers: SurveyAnswers) {
+  return surveyQuestionMeta.filter((item) => {
+    const value = answers[item.field];
+    return String(value ?? '').trim() === '';
+  });
+}
+
 function createCenteredIneCrop(mediaWidth: number, mediaHeight: number) {
   return centerCrop(
     makeAspectCrop(
@@ -233,6 +272,30 @@ function createEmptyPerson(mode: 'manual' | 'ocr', geo: GeoSnapshot): PersonForm
   };
 }
 
+type PersonErrorMap = Partial<Record<'nombres' | 'apellidoPaterno' | 'claveElector' | 'seccion' | 'calle' | 'telefono', string>>;
+
+function validateRequiredPersonFields(person: PersonFormData | null): PersonErrorMap {
+  if (!person) {
+    return {
+      nombres: 'Es requerido',
+      apellidoPaterno: 'Es requerido',
+      claveElector: 'Es requerido',
+      seccion: 'Es requerido',
+      calle: 'Es requerido',
+      telefono: 'Es requerido',
+    };
+  }
+
+  return {
+    nombres: person.nombres.trim() ? '' : 'Es requerido',
+    apellidoPaterno: person.apellidoPaterno.trim() ? '' : 'Es requerido',
+    claveElector: person.claveElector.trim() ? '' : 'Es requerido',
+    seccion: person.seccion.trim() ? '' : 'Es requerido',
+    calle: person.calle.trim() ? '' : 'Es requerido',
+    telefono: person.telefono.trim() ? '' : 'Es requerido',
+  };
+}
+
 export default function SurveyNewPage() {
   const navigate = useNavigate();
 
@@ -242,7 +305,9 @@ export default function SurveyNewPage() {
   const [cancelOpen, setCancelOpen] = useState(false);
   const [confirmSaveOpen, setConfirmSaveOpen] = useState(false);
   const [finishOpen, setFinishOpen] = useState(false);
-  const [missingPhoneOpen, setMissingPhoneOpen] = useState(false);
+  const [showPersonErrors, setShowPersonErrors] = useState(false);
+  const [missingAnswersDialogOpen, setMissingAnswersDialogOpen] = useState(false);
+  const [missingAnswers, setMissingAnswers] = useState<MissingAnswerItem[]>([]);
 
   const [page, setPage] = useState(1);
   const [personMode, setPersonMode] = useState<'manual' | 'ocr'>('manual');
@@ -260,12 +325,14 @@ export default function SurveyNewPage() {
   const [crop, setCrop] = useState<Crop>();
   const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
   const [cropApplied, setCropApplied] = useState(false);
+  const [questionnaireId, setQuestionnaireId] = useState<number | null>(null);
+  const [persistedPersonFingerprint, setPersistedPersonFingerprint] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
+  const [duplicateMatch, setDuplicateMatch] = useState<DuplicateRespondentMatch | null>(null);
 
   const ocrImageRef = useRef<HTMLImageElement | null>(null);
-  const phoneInputRef = useRef<HTMLInputElement | null>(null);
-
-  const user = authStore.getUser();
-
+  const answerFieldRefs = useRef<Partial<Record<keyof SurveyAnswers, HTMLInputElement | HTMLTextAreaElement | null>>>({});
   useEffect(() => {
     // 📍 Intenta capturar ubicación apenas se abre la pantalla.
     getBrowserLocation()
@@ -343,8 +410,11 @@ export default function SurveyNewPage() {
 
   const completePerson = useMemo(() => {
     // ✅ Regla mínima para desbloquear la pestaña de encuesta.
-    return !!person && !!person.nombres && !!person.apellidoPaterno && !!person.seccion;
+    const errors = validateRequiredPersonFields(person);
+    return Object.values(errors).every((value) => !value);
   }, [person]);
+
+  const personErrors = useMemo(() => validateRequiredPersonFields(person), [person]);
 
   const selectedSection = useMemo(() => {
     // 🎯 Resuelve la sección seleccionada con su metadata completa.
@@ -367,6 +437,14 @@ export default function SurveyNewPage() {
     setCrop(undefined);
     setCompletedCrop(undefined);
     setCropApplied(false);
+    setShowPersonErrors(false);
+    setMissingAnswersDialogOpen(false);
+    setMissingAnswers([]);
+    setQuestionnaireId(null);
+    setPersistedPersonFingerprint(null);
+    setSubmitting(false);
+    setDuplicateDialogOpen(false);
+    setDuplicateMatch(null);
     setFinishOpen(false);
     toast.info('Encuesta reiniciada para una nueva persona 🔄');
   };
@@ -526,29 +604,133 @@ export default function SurveyNewPage() {
     }
   };
 
+  const handleContinueToSurvey = async () => {
+    const errors = validateRequiredPersonFields(person);
+    setShowPersonErrors(true);
+
+    if (Object.values(errors).some(Boolean)) {
+      toast.warning('Completa los campos obligatorios marcados en rojo ⚠️');
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      if (!questionnaireId) {
+        const duplicate = await findRespondentDuplicateByClaveElector(person?.claveElector ?? '');
+        if (duplicate) {
+          setDuplicateMatch(duplicate);
+          setDuplicateDialogOpen(true);
+          return;
+        }
+      }
+
+      const id = await persistPerson();
+      if (!id) return;
+      setTab(1);
+    } catch {
+      toast.error('No se pudo guardar el alta de la persona ❌');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleContinueAfterDuplicateWarning = async () => {
+    try {
+      setDuplicateDialogOpen(false);
+      setSubmitting(true);
+      const id = await persistPerson();
+      if (!id) return;
+      setTab(1);
+    } catch {
+      toast.error('No se pudo guardar el alta de la persona ❌');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleSave = () => {
-    // 💾 Construye y persiste el registro final de la encuesta.
-    if (!person || !geo) return;
+    void (async () => {
+      // 💾 Asegura primero la persistencia de persona y después almacena respuestas.
+      if (!person || !geo) return;
 
-    const now = new Date().toISOString();
+      try {
+        setSubmitting(true);
+        const id = await persistPerson();
+        if (!id) return;
 
-    const record: SurveyRecord = {
-      id: uuid(),
-      createdAt: now,
-      startedAt: geo.capturedAt,
-      finishedAt: now,
-      interviewerName: user?.nombre ?? 'Sin nombre',
-      sectionPriorityLabel: selectedSection
-        ? `Sección ${selectedSection.IdSeccion} · ${selectedSection.Municipio}`
-        : `Sección ${person.seccion}`,
-      person,
-      answers,
-    };
+        await saveSurveyAnswers(id, answers);
+        setConfirmSaveOpen(false);
+        setFinishOpen(true);
+        toast.success('Encuesta terminada y guardada ✅');
+      } catch {
+        toast.error('No se pudo guardar la encuesta en el servidor ❌');
+      } finally {
+        setSubmitting(false);
+      }
+    })();
+  };
 
-    respondentsStore.save(record);
-    setConfirmSaveOpen(false);
-    setFinishOpen(true);
-    toast.success('Encuesta terminada y guardada ✅');
+  const handleValidateSurveyBeforeSave = () => {
+    const missing = findMissingSurveyAnswers(answers);
+    if (!missing.length) {
+      setConfirmSaveOpen(true);
+      return;
+    }
+
+    setMissingAnswers(missing);
+    setMissingAnswersDialogOpen(true);
+  };
+
+  const handleGoToFirstMissingAnswer = () => {
+    const firstMissing = missingAnswers[0];
+    if (!firstMissing) {
+      setMissingAnswersDialogOpen(false);
+      return;
+    }
+
+    setMissingAnswersDialogOpen(false);
+    setPage(firstMissing.page);
+
+    window.setTimeout(() => {
+      answerFieldRefs.current[firstMissing.field]?.focus();
+    }, 80);
+  };
+
+  const persistPerson = async () => {
+    if (!person) return null;
+
+    const fingerprint = buildPersonFingerprint(person);
+
+    if (questionnaireId && fingerprint === persistedPersonFingerprint) {
+      return questionnaireId;
+    }
+
+    if (questionnaireId) {
+      const response = await updateRespondentPerson(questionnaireId, person);
+      setPersistedPersonFingerprint(fingerprint);
+      setPerson((prev) =>
+        prev
+          ? {
+              ...prev,
+              folio: response.data.Folio || prev.folio,
+            }
+          : prev
+      );
+      return questionnaireId;
+    }
+
+    const response = await createRespondentPerson(person);
+    setQuestionnaireId(response.IdCuestionario);
+    setPersistedPersonFingerprint(fingerprint);
+    setPerson((prev) =>
+      prev
+        ? {
+            ...prev,
+            folio: response.folio || prev.folio,
+          }
+        : prev
+    );
+    return response.IdCuestionario;
   };
 
   return (
@@ -850,18 +1032,11 @@ export default function SurveyNewPage() {
                   {/* 🧍 Formulario de datos personales */}
                   <Grid item xs={12} md={4}>
                     <TextField
-                      label="Folio"
-                      value={person?.folio ?? ''}
-                      onChange={(e) => updatePersonField('folio', e.target.value)}
-                      fullWidth
-                    />
-                  </Grid>
-
-                  <Grid item xs={12} md={4}>
-                    <TextField
                       label="Nombres"
                       value={person?.nombres ?? ''}
                       onChange={(e) => updatePersonField('nombres', e.target.value)}
+                      error={showPersonErrors && !!personErrors.nombres}
+                      helperText={showPersonErrors && personErrors.nombres ? personErrors.nombres : ' '}
                       fullWidth
                     />
                   </Grid>
@@ -871,6 +1046,10 @@ export default function SurveyNewPage() {
                       label="Apellido paterno"
                       value={person?.apellidoPaterno ?? ''}
                       onChange={(e) => updatePersonField('apellidoPaterno', e.target.value)}
+                      error={showPersonErrors && !!personErrors.apellidoPaterno}
+                      helperText={
+                        showPersonErrors && personErrors.apellidoPaterno ? personErrors.apellidoPaterno : ' '
+                      }
                       fullWidth
                     />
                   </Grid>
@@ -888,10 +1067,11 @@ export default function SurveyNewPage() {
                     <TextField
                       label="Teléfono"
                       value={person?.telefono ?? ''}
-                      inputRef={phoneInputRef}
                       onChange={(e) =>
                         updatePersonField('telefono', e.target.value.replace(/[^\d+()\-\s]/g, ''))
                       }
+                      error={showPersonErrors && !!personErrors.telefono}
+                      helperText={showPersonErrors && personErrors.telefono ? personErrors.telefono : ' '}
                       fullWidth
                     />
                   </Grid>
@@ -935,6 +1115,10 @@ export default function SurveyNewPage() {
                       label="Clave de elector"
                       value={person?.claveElector ?? ''}
                       onChange={(e) => updatePersonField('claveElector', e.target.value.toUpperCase())}
+                      error={showPersonErrors && !!personErrors.claveElector}
+                      helperText={
+                        showPersonErrors && personErrors.claveElector ? personErrors.claveElector : ' '
+                      }
                       fullWidth
                     />
                   </Grid>
@@ -953,10 +1137,13 @@ export default function SurveyNewPage() {
                           {...params}
                           label="Sección"
                           helperText={
-                            sectionsLoading
+                            showPersonErrors && personErrors.seccion
+                              ? personErrors.seccion
+                              : sectionsLoading
                               ? 'Cargando catálogo de secciones...'
                               : 'Selecciona o busca una sección del catálogo oficial'
                           }
+                          error={showPersonErrors && !!personErrors.seccion}
                         />
                       )}
                     />
@@ -967,6 +1154,8 @@ export default function SurveyNewPage() {
                       label="Calle"
                       value={person?.calle ?? ''}
                       onChange={(e) => updatePersonField('calle', e.target.value)}
+                      error={showPersonErrors && !!personErrors.calle}
+                      helperText={showPersonErrors && personErrors.calle ? personErrors.calle : ' '}
                       fullWidth
                     />
                   </Grid>
@@ -1040,15 +1229,8 @@ export default function SurveyNewPage() {
                   {/* ➡️ Avance a la siguiente etapa */}
                   <Button
                     variant="contained"
-                    disabled={!completePerson}
-                    onClick={() => {
-                      if (!person?.telefono.trim()) {
-                        setMissingPhoneOpen(true);
-                        return;
-                      }
-
-                      setTab(1);
-                    }}
+                    disabled={submitting}
+                    onClick={() => void handleContinueToSurvey()}
                     sx={{ borderRadius: 999, fontWeight: 800 }}
                   >
                     Continuar a encuesta ➡️
@@ -1110,6 +1292,9 @@ export default function SurveyNewPage() {
                         onChange={(e) =>
                           setAnswers({ ...answers, hasValidCredential: e.target.value as any })
                         }
+                        inputRef={(node) => {
+                          answerFieldRefs.current.hasValidCredential = node;
+                        }}
                         fullWidth
                       >
                         {['Si', 'No'].map((v) => (
@@ -1128,6 +1313,9 @@ export default function SurveyNewPage() {
                         onChange={(e) =>
                           setAnswers({ ...answers, sexoObservado: e.target.value as any })
                         }
+                        inputRef={(node) => {
+                          answerFieldRefs.current.sexoObservado = node;
+                        }}
                         fullWidth
                       >
                         {['Hombre', 'Mujer', 'Otro'].map((v) => (
@@ -1144,6 +1332,9 @@ export default function SurveyNewPage() {
                         label="3. Rango de edad"
                         value={answers.rangoEdad}
                         onChange={(e) => setAnswers({ ...answers, rangoEdad: e.target.value as any })}
+                        inputRef={(node) => {
+                          answerFieldRefs.current.rangoEdad = node;
+                        }}
                         fullWidth
                       >
                         {['18 a 29', '30 a 44', '45 a 59', '60 o más'].map((v) => (
@@ -1162,6 +1353,9 @@ export default function SurveyNewPage() {
                         onChange={(e) =>
                           setAnswers({ ...answers, escolaridad: e.target.value as any })
                         }
+                        inputRef={(node) => {
+                          answerFieldRefs.current.escolaridad = node;
+                        }}
                         fullWidth
                       >
                         {[
@@ -1204,6 +1398,9 @@ export default function SurveyNewPage() {
                         label="5. ¿Conoce a Gino Segura?"
                         value={answers.conoceGino}
                         onChange={(e) => setAnswers({ ...answers, conoceGino: e.target.value as any })}
+                        inputRef={(node) => {
+                          answerFieldRefs.current.conoceGino = node;
+                        }}
                         fullWidth
                       >
                         {['Si', 'No'].map((v) => (
@@ -1222,6 +1419,9 @@ export default function SurveyNewPage() {
                         onChange={(e) =>
                           setAnswers({ ...answers, conoceLatifa: e.target.value as any })
                         }
+                        inputRef={(node) => {
+                          answerFieldRefs.current.conoceLatifa = node;
+                        }}
                         fullWidth
                       >
                         {['Si', 'No'].map((v) => (
@@ -1240,6 +1440,9 @@ export default function SurveyNewPage() {
                         onChange={(e) =>
                           setAnswers({ ...answers, conocePalazuelos: e.target.value as any })
                         }
+                        inputRef={(node) => {
+                          answerFieldRefs.current.conocePalazuelos = node;
+                        }}
                         fullWidth
                       >
                         {['Si', 'No'].map((v) => (
@@ -1258,6 +1461,9 @@ export default function SurveyNewPage() {
                         onChange={(e) =>
                           setAnswers({ ...answers, importanciaPoliticos: e.target.value as any })
                         }
+                        inputRef={(node) => {
+                          answerFieldRefs.current.importanciaPoliticos = node;
+                        }}
                         fullWidth
                       >
                         {[
@@ -1303,6 +1509,9 @@ export default function SurveyNewPage() {
                         onChange={(e) =>
                           setAnswers({ ...answers, ginoDebeSeguir: e.target.value as any })
                         }
+                        inputRef={(node) => {
+                          answerFieldRefs.current.ginoDebeSeguir = node;
+                        }}
                         fullWidth
                       >
                         {[
@@ -1323,6 +1532,9 @@ export default function SurveyNewPage() {
                         label="8. Opinión de Gino Segura"
                         value={answers.opinionGino}
                         onChange={(e) => setAnswers({ ...answers, opinionGino: e.target.value as any })}
+                        inputRef={(node) => {
+                          answerFieldRefs.current.opinionGino = node;
+                        }}
                         fullWidth
                       >
                         {[
@@ -1346,6 +1558,9 @@ export default function SurveyNewPage() {
                         label="9. Principal atributo asociado"
                         value={answers.atributoGino}
                         onChange={(e) => setAnswers({ ...answers, atributoGino: e.target.value as any })}
+                        inputRef={(node) => {
+                          answerFieldRefs.current.atributoGino = node;
+                        }}
                         fullWidth
                       >
                         {[
@@ -1389,6 +1604,9 @@ export default function SurveyNewPage() {
                         label="10. Problemática nacional"
                         value={answers.problemaNacional}
                         onChange={(e) => setAnswers({ ...answers, problemaNacional: e.target.value })}
+                        inputRef={(node) => {
+                          answerFieldRefs.current.problemaNacional = node;
+                        }}
                         fullWidth
                       >
                         {[
@@ -1426,6 +1644,9 @@ export default function SurveyNewPage() {
                         label="11. Problemática local"
                         value={answers.problemaLocal}
                         onChange={(e) => setAnswers({ ...answers, problemaLocal: e.target.value })}
+                        inputRef={(node) => {
+                          answerFieldRefs.current.problemaLocal = node;
+                        }}
                         fullWidth
                       >
                         {[
@@ -1533,7 +1754,8 @@ export default function SurveyNewPage() {
                             <Button
                               variant="contained"
                               startIcon={<SaveIcon />}
-                              onClick={() => setConfirmSaveOpen(true)}
+                              onClick={handleValidateSurveyBeforeSave}
+                              disabled={submitting}
                               sx={{ borderRadius: 999, fontWeight: 800 }}
                             >
                               Confirmar encuesta
@@ -1562,29 +1784,13 @@ export default function SurveyNewPage() {
         />
 
         <ConfirmDialog
-          open={missingPhoneOpen}
-          title="Número de contacto faltante"
-          content="No capturaste teléfono. ¿Deseas continuar la encuesta sin número de contacto o prefieres capturarlo ahora?"
-          confirmText="Continuar"
-          cancelText="Poner número de contacto"
-          autoFocusAction="cancel"
-          onClose={() => {
-            setMissingPhoneOpen(false);
-            window.setTimeout(() => phoneInputRef.current?.focus(), 60);
-          }}
-          onConfirm={() => {
-            setMissingPhoneOpen(false);
-            setTab(1);
-          }}
-        />
-
-        <ConfirmDialog
           open={confirmSaveOpen}
           title="Confirmar encuesta"
           content="¿Deseas guardar esta encuesta?"
           confirmText="Guardar"
           onClose={() => setConfirmSaveOpen(false)}
           onConfirm={handleSave}
+          confirmDisabled={submitting}
         />
 
         <ConfirmDialog
@@ -1599,6 +1805,174 @@ export default function SurveyNewPage() {
           }}
           onConfirm={() => navigate('/respondents')}
         />
+
+        <Dialog
+          open={duplicateDialogOpen}
+          onClose={() => {
+            setDuplicateDialogOpen(false);
+            setDuplicateMatch(null);
+          }}
+          maxWidth="xs"
+          fullWidth
+          PaperProps={{
+            sx: {
+              borderRadius: 5,
+              overflow: 'hidden',
+            },
+          }}
+        >
+          <DialogContent sx={{ px: 3, pt: 4, pb: 2 }}>
+            <Stack spacing={2.2} alignItems="center" textAlign="center">
+              <Box
+                sx={{
+                  width: 96,
+                  height: 96,
+                  borderRadius: '50%',
+                  display: 'grid',
+                  placeItems: 'center',
+                  background: 'linear-gradient(135deg, rgba(245,124,0,0.16) 0%, rgba(255,183,77,0.28) 100%)',
+                  boxShadow: '0 18px 34px rgba(245,124,0,0.18)',
+                }}
+              >
+                <WarningAmberRoundedIcon sx={{ fontSize: 56, color: '#E07A12' }} />
+              </Box>
+
+              <Box>
+                <Typography variant="h5" sx={{ fontWeight: 900, color: '#6C3841' }}>
+                  Registro duplicado detectado
+                </Typography>
+                <Typography color="text.secondary" sx={{ mt: 1 }}>
+                  Ya existe un registro con esta clave de elector. ¿Deseas continuar de todos modos?
+                </Typography>
+              </Box>
+
+              {duplicateMatch ? (
+                <Box
+                  sx={{
+                    width: '100%',
+                    p: 2,
+                    borderRadius: 3,
+                    textAlign: 'left',
+                    bgcolor: 'rgba(108,56,65,0.04)',
+                    border: '1px solid rgba(108,56,65,0.10)',
+                  }}
+                >
+                  <Typography sx={{ fontWeight: 800 }}>
+                    {duplicateMatch.fullName || 'Registro existente'}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Folio: {duplicateMatch.folio || '-'}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Clave de elector: {duplicateMatch.claveElector || '-'}
+                  </Typography>
+                </Box>
+              ) : null}
+            </Stack>
+          </DialogContent>
+
+          <DialogActions sx={{ px: 3, pb: 3, justifyContent: 'center', gap: 1 }}>
+            <Button
+              variant="outlined"
+              onClick={() => {
+                setDuplicateDialogOpen(false);
+                setDuplicateMatch(null);
+              }}
+              sx={{ borderRadius: 999, minWidth: 140 }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="contained"
+              onClick={() => void handleContinueAfterDuplicateWarning()}
+              disabled={submitting}
+              sx={{ borderRadius: 999, minWidth: 140, fontWeight: 800 }}
+            >
+              Continuar
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        <Dialog
+          open={missingAnswersDialogOpen}
+          onClose={() => setMissingAnswersDialogOpen(false)}
+          maxWidth="sm"
+          fullWidth
+          PaperProps={{
+            sx: {
+              borderRadius: 5,
+              overflow: 'hidden',
+            },
+          }}
+        >
+          <DialogContent sx={{ px: 3, pt: 4, pb: 2 }}>
+            <Stack spacing={2.2} alignItems="center" textAlign="center">
+              <Box
+                sx={{
+                  width: 96,
+                  height: 96,
+                  borderRadius: '50%',
+                  display: 'grid',
+                  placeItems: 'center',
+                  background: 'linear-gradient(135deg, rgba(245,124,0,0.16) 0%, rgba(255,183,77,0.28) 100%)',
+                  boxShadow: '0 18px 34px rgba(245,124,0,0.18)',
+                }}
+              >
+                <WarningAmberRoundedIcon sx={{ fontSize: 56, color: '#E07A12' }} />
+              </Box>
+
+              <Box>
+                <Typography variant="h5" sx={{ fontWeight: 900, color: '#6C3841' }}>
+                  Hay preguntas sin responder
+                </Typography>
+                <Typography color="text.secondary" sx={{ mt: 1 }}>
+                  La encuesta puede completarse aun con respuestas faltantes. Revisa si deseas continuar o regresar a la primera pregunta pendiente.
+                </Typography>
+              </Box>
+
+              <Box
+                sx={{
+                  width: '100%',
+                  maxHeight: 260,
+                  overflowY: 'auto',
+                  p: 2,
+                  borderRadius: 3,
+                  textAlign: 'left',
+                  bgcolor: 'rgba(108,56,65,0.04)',
+                  border: '1px solid rgba(108,56,65,0.10)',
+                }}
+              >
+                <Stack spacing={1}>
+                  {missingAnswers.map((item) => (
+                    <Typography key={item.field} variant="body2">
+                      Pagina {item.page} · Pregunta {item.questionNumber}: {item.label}
+                    </Typography>
+                  ))}
+                </Stack>
+              </Box>
+            </Stack>
+          </DialogContent>
+
+          <DialogActions sx={{ px: 3, pb: 3, justifyContent: 'center', gap: 1 }}>
+            <Button
+              variant="outlined"
+              onClick={handleGoToFirstMissingAnswer}
+              sx={{ borderRadius: 999, minWidth: 170 }}
+            >
+              Revisar preguntas
+            </Button>
+            <Button
+              variant="contained"
+              onClick={() => {
+                setMissingAnswersDialogOpen(false);
+                setConfirmSaveOpen(true);
+              }}
+              sx={{ borderRadius: 999, minWidth: 170, fontWeight: 800 }}
+            >
+              Completar encuesta
+            </Button>
+          </DialogActions>
+        </Dialog>
       </Stack>
     </>
   );

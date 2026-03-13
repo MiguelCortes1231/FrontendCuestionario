@@ -12,6 +12,7 @@ interface Props {
   content: string;
   confirmText?: string;
   cancelText?: string;
+  confirmDisabled?: boolean;
   autoFocusAction?: 'confirm' | 'cancel';
   onConfirm: () => void;
   onClose: () => void;
@@ -23,6 +24,7 @@ export default function ConfirmDialog({
   content,
   confirmText = 'Confirmar',
   cancelText = 'Cancelar',
+  confirmDisabled = false,
   autoFocusAction = 'confirm',
   onConfirm,
   onClose,
@@ -40,7 +42,12 @@ export default function ConfirmDialog({
           {cancelText}
         </Button>
         {/* ✅ Acción positiva entregada por la pantalla consumidora */}
-        <Button variant="contained" onClick={onConfirm} autoFocus={autoFocusAction === 'confirm'}>
+        <Button
+          variant="contained"
+          onClick={onConfirm}
+          autoFocus={autoFocusAction === 'confirm'}
+          disabled={confirmDisabled}
+        >
           {confirmText}
         </Button>
       </DialogActions>

@@ -41,13 +41,12 @@ import MapIcon from '@mui/icons-material/Map';
 import PlaceIcon from '@mui/icons-material/Place';
 import QueryStatsIcon from '@mui/icons-material/QueryStats';
 import TimelineIcon from '@mui/icons-material/Timeline';
-import TravelExploreIcon from '@mui/icons-material/TravelExplore';
 import { CircleMarker, MapContainer, TileLayer, useMap } from 'react-leaflet';
 import type { SurveyRecord } from '../../types/survey';
 import type { SectionItem } from '../../types/section';
-import { respondentsStore } from '../../store/respondents.store';
 import { authStore } from '../../store/auth.store';
 import { getSecciones } from '../../services/sections.service';
+import { getRespondents } from '../../services/respondents.service';
 
 type MunicipalityMeta = {
   name: string;
@@ -503,10 +502,11 @@ export default function DashboardPage() {
   const theme = useTheme();
   const navigate = useNavigate();
   const user = authStore.getUser();
-  const records = respondentsStore.list();
+  const [records, setRecords] = useState<SurveyRecord[]>([]);
 
   const [sectionsCatalog, setSectionsCatalog] = useState<SectionItem[]>([]);
   const [catalogError, setCatalogError] = useState(false);
+  const [recordsError, setRecordsError] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -516,9 +516,16 @@ export default function DashboardPage() {
         const data = await getSecciones();
         if (!alive) return;
         setSectionsCatalog(data);
+        const sectionMap = new Map(
+          data.map((section) => [String(section.IdSeccion), normalizeMunicipalityName(section.Municipio)])
+        );
+        const respondents = await getRespondents((sectionId) => sectionMap.get(sectionId) ?? '');
+        if (!alive) return;
+        setRecords(respondents);
       } catch {
         if (!alive) return;
         setCatalogError(true);
+        setRecordsError(true);
       }
     })();
 
@@ -618,9 +625,8 @@ export default function DashboardPage() {
 
     const currentYearTotal = monthlyCurrentYear.reduce((sum, item) => sum + item.value, 0);
     const currentMonthTotal = monthlyCurrentYear[currentMonth]?.value ?? 0;
-    const totalOfficialSections = officialSectionIds.size;
+    const totalCatalogSections = officialSectionIds.size;
     const coveredSections = interviewedSections.size;
-    const sectionCoverageRate = totalOfficialSections ? (coveredSections / totalOfficialSections) * 100 : 0;
     const avgMonthlyCurrentYear = currentDate.getMonth() >= 0 ? currentYearTotal / (currentMonth + 1) : 0;
     const topSections = [...sectionCounts.entries()]
       .filter(([section]) => section !== 'Sin sección')
@@ -647,7 +653,14 @@ export default function DashboardPage() {
     const yearlySeries = [...yearCounts.entries()]
       .sort((left, right) => left[0] - right[0])
       .map(([year, value]) => ({ label: String(year), value }));
-    const latestRecord = records[0] ?? null;
+    const latestRecord = records.reduce<SurveyRecord | null>((latest, record) => {
+      if (!latest) return record;
+
+      const latestDate = safeDate(latest.createdAt)?.getTime() ?? 0;
+      const currentDateValue = safeDate(record.createdAt)?.getTime() ?? 0;
+
+      return currentDateValue > latestDate ? record : latest;
+    }, null);
     const completedCount = resultCounts.get('Completa') ?? 0;
     const rejectedCount = resultCounts.get('Rechazada a la mitad') ?? 0;
     const otherResults = [...resultCounts.entries()]
@@ -655,6 +668,10 @@ export default function DashboardPage() {
       .reduce((sum, [, count]) => sum + count, 0);
     const averageAccuracy =
       accuracies.length > 0 ? accuracies.reduce((sum, value) => sum + value, 0) / accuracies.length : 0;
+    const municipalitiesWithoutInterviews = municipalityStats
+      .filter((item) => item.interviews === 0)
+      .map((item) => item.name);
+    const topMunicipality = municipalityStats.find((item) => item.interviews > 0) ?? null;
 
     return {
       currentYear,
@@ -665,8 +682,7 @@ export default function DashboardPage() {
       avgMonthlyCurrentYear,
       municipalityCoverageCount: interviewedMunicipalities.size,
       coveredSections,
-      totalOfficialSections,
-      sectionCoverageRate,
+      totalCatalogSections,
       completedCount,
       rejectedCount,
       otherResults,
@@ -678,6 +694,8 @@ export default function DashboardPage() {
       sectionsWithSingleInterview,
       geoPoints,
       averageAccuracy,
+      municipalitiesWithoutInterviews,
+      topMunicipality,
     };
   }, [records, sectionMunicipalityMap, sectionsCatalog]);
 
@@ -740,7 +758,7 @@ export default function DashboardPage() {
                     }}
                   />
                   <Chip
-                    label={`${formatPercent(dashboard.sectionCoverageRate)} de cobertura seccional`}
+                    label={`${formatNumber(dashboard.totalCatalogSections)} secciones en catálogo`}
                     sx={{
                       bgcolor: 'rgba(255,255,255,0.16)',
                       color: '#fff',
@@ -814,9 +832,9 @@ export default function DashboardPage() {
         </CardContent>
       </Card>
 
-      {catalogError ? (
+      {catalogError || recordsError ? (
         <Alert severity="warning">
-          No se pudo cargar el catálogo oficial de secciones. Las métricas de cobertura se muestran con lo disponible en las encuestas guardadas.
+          No se pudieron cargar todos los datos remotos. Las métricas pueden verse incompletas.
         </Alert>
       ) : null}
 
@@ -870,9 +888,9 @@ export default function DashboardPage() {
             <Grid item xs={12} md={6} xl={4}>
               <StatCard
                 icon={<MapIcon />}
-                title="Cobertura de secciones 🗂️"
-                value={`${formatNumber(dashboard.coveredSections)}${dashboard.totalOfficialSections ? ` / ${formatNumber(dashboard.totalOfficialSections)}` : ''}`}
-                subtitle={`Cobertura acumulada ${formatPercent(dashboard.sectionCoverageRate)} sobre el catálogo oficial cargado.`}
+                title="Secciones activas 🗂️"
+                value={`${formatNumber(dashboard.coveredSections)} / ${formatNumber(dashboard.totalCatalogSections)}`}
+                subtitle="Secciones del catálogo oficial que ya tienen al menos una entrevista levantada."
                 accent={theme.palette.warning.main}
               />
             </Grid>
@@ -892,6 +910,19 @@ export default function DashboardPage() {
                 value={formatNumber(dashboard.geoPoints.length)}
                 subtitle={`Precisión promedio ${dashboard.averageAccuracy ? `${Math.round(dashboard.averageAccuracy)} m` : 'sin dato'} en coordenadas capturadas.`}
                 accent={theme.palette.error.main}
+              />
+            </Grid>
+            <Grid item xs={12} md={6} xl={4}>
+              <StatCard
+                icon={<AutoGraphIcon />}
+                title="Municipio líder 🥇"
+                value={formatNumber(dashboard.topMunicipality?.interviews ?? 0)}
+                subtitle={
+                  dashboard.topMunicipality
+                    ? `${dashboard.topMunicipality.name} encabeza el ranking actual.`
+                    : 'Todavía no hay un municipio con entrevistas registradas.'
+                }
+                accent={theme.palette.primary.dark}
               />
             </Grid>
           </Grid>
@@ -979,10 +1010,10 @@ export default function DashboardPage() {
                         <Card sx={{ bgcolor: alpha(theme.palette.info.main, 0.08), boxShadow: 'none' }}>
                           <CardContent>
                             <Typography variant="body2" color="text.secondary">
-                              Cobertura oficial
+                              Secciones en catálogo
                             </Typography>
                             <Typography variant="h5" sx={{ fontWeight: 900 }}>
-                              {formatPercent(dashboard.sectionCoverageRate)}
+                              {formatNumber(dashboard.totalCatalogSections)}
                             </Typography>
                           </CardContent>
                         </Card>
@@ -1112,13 +1143,13 @@ export default function DashboardPage() {
                 <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" spacing={1.5}>
                   <Box>
                     <Typography variant="h6" sx={{ fontWeight: 900 }}>
-                      Lectura ejecutiva recomendada para este dashboard 🎨
+                      Resumen ejecutivo del tablero 🧠
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                      Esta estructura ya deja el tablero profesional y visual. Si después quieres subirlo todavía más, estas son las siguientes capas de valor.
+                      Lectura rápida de operación real usando cuestionarios remotos y catálogo oficial de secciones.
                     </Typography>
                   </Box>
-                  <Button variant="outlined" startIcon={<TravelExploreIcon />} onClick={() => navigate('/respondents')}>
+                  <Button variant="outlined" startIcon={<PlaceIcon />} onClick={() => navigate('/respondents')}>
                     Revisar encuestados
                   </Button>
                 </Stack>
@@ -1127,21 +1158,32 @@ export default function DashboardPage() {
                   {[
                     {
                       icon: <TimelineIcon fontSize="small" />,
-                      title: 'Filtro por año y municipio',
-                      text: 'Agregar selectores arriba para que el usuario compare 2025 vs 2026, o solo Cancún, Chetumal, Playa del Carmen, etc.',
+                      title: 'Última captura',
+                      text: dashboard.latestRecord
+                        ? `${formatCompactDate(dashboard.latestRecord.createdAt)} · ${dashboard.latestRecord.person.folio || 'Sin folio'}`
+                        : 'Todavía no hay una última captura disponible.',
                     },
                     {
                       icon: <AutoGraphIcon fontSize="small" />,
-                      title: 'Mapa por color municipal',
-                      text: 'Asignar color distinto por municipio para distinguir mejor la operación territorial en la capa geográfica.',
+                      title: 'Municipio líder',
+                      text: dashboard.topMunicipality
+                        ? `${dashboard.topMunicipality.name} suma ${formatNumber(dashboard.topMunicipality.interviews)} entrevistas y ${formatNumber(dashboard.topMunicipality.uniqueSections)} secciones activas.`
+                        : 'Todavía no existe un municipio líder con datos suficientes.',
                     },
                     {
                       icon: <PlaceIcon fontSize="small" />,
-                      title: 'Mapa con densidad o clusters',
-                      text: 'Si el volumen crece mucho, conviene usar clusters o heatmap. Para eso sí valdría la pena instalar una librería especializada.',
+                      title: 'Municipios sin actividad',
+                      text: dashboard.municipalitiesWithoutInterviews.length
+                        ? dashboard.municipalitiesWithoutInterviews.join(', ')
+                        : 'Los 11 municipios ya tienen al menos una entrevista registrada.',
+                    },
+                    {
+                      icon: <MapIcon fontSize="small" />,
+                      title: 'Catálogo electoral',
+                      text: `${formatNumber(dashboard.totalCatalogSections)} secciones oficiales cargadas desde el servicio de secciones.`,
                     },
                   ].map((item) => (
-                    <Grid item xs={12} md={4} key={item.title}>
+                    <Grid item xs={12} md={6} key={item.title}>
                       <Card sx={{ height: '100%', bgcolor: alpha(theme.palette.primary.main, 0.035), boxShadow: 'none' }}>
                         <CardContent>
                           <Stack spacing={1.1}>

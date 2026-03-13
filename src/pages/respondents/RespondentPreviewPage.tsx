@@ -4,7 +4,7 @@
  * Organiza el registro completo en una presentación clara pensada tanto para
  * pantalla como para exportación PDF.
  */
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Alert,
@@ -27,11 +27,12 @@ import PlaceIcon from '@mui/icons-material/Place';
 import QuizIcon from '@mui/icons-material/Quiz';
 import BadgeIcon from '@mui/icons-material/Badge';
 import ReadonlyGeoMap from '../../components/map/ReadonlyGeoMap';
-import { respondentsStore } from '../../store/respondents.store';
 import { exportNodeToPdf } from '../../utils/pdf';
-import type { SurveyAnswers } from '../../types/survey';
+import type { SurveyAnswers, SurveyRecord } from '../../types/survey';
 import { formatPhone } from '../../utils/contact';
 import { buildGoogleMapsPlaceUrl } from '../../utils/maps';
+import { getSecciones } from '../../services/sections.service';
+import { getRespondentById } from '../../services/respondents.service';
 
 type PreviewAnswerItem = {
   key: keyof SurveyAnswers | string;
@@ -169,11 +170,49 @@ function buildAnswerItems(answers: SurveyAnswers): PreviewAnswerItem[] {
 export default function RespondentPreviewPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const record = id ? respondentsStore.findById(id) : null;
+  const [record, setRecord] = useState<SurveyRecord | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const previewRef = useRef<HTMLDivElement>(null);
   const mapsUrl = record
     ? buildGoogleMapsPlaceUrl(record.person.geo?.latitude, record.person.geo?.longitude)
     : null;
+
+  useEffect(() => {
+    let alive = true;
+
+    if (!id) {
+      setLoadError(true);
+      setLoading(false);
+      return () => {
+        alive = false;
+      };
+    }
+
+    (async () => {
+      try {
+        setLoading(true);
+        setLoadError(false);
+        const sections = await getSecciones();
+        const sectionMap = new Map(
+          sections.map((section) => [String(section.IdSeccion), section.Municipio])
+        );
+        const data = await getRespondentById(id, (sectionId) => sectionMap.get(sectionId) ?? '');
+        if (!alive) return;
+        setRecord(data);
+      } catch {
+        if (!alive) return;
+        setLoadError(true);
+      } finally {
+        if (!alive) return;
+        setLoading(false);
+      }
+    })();
+
+    return () => {
+      alive = false;
+    };
+  }, [id]);
 
   const answerGroups = useMemo(() => {
     if (!record) return [];
@@ -194,7 +233,11 @@ export default function RespondentPreviewPage() {
     }));
   }, [record]);
 
-  if (!record) {
+  if (loading) {
+    return <Alert severity="info">Cargando encuesta...</Alert>;
+  }
+
+  if (loadError || !record) {
     return <Alert severity="warning">No se encontró la encuesta solicitada.</Alert>;
   }
 
