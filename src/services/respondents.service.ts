@@ -1,6 +1,7 @@
 import { api } from './http';
 import type { PersonFormData } from '../types/person';
 import type { SurveyAnswers, SurveyRecord } from '../types/survey';
+import { authStore } from '../store/auth.store';
 
 type ApiResponseEnvelope<T> = {
   success: boolean;
@@ -287,6 +288,11 @@ export function mapApiCuestionarioToSurveyRecord(
   const municipality = resolveMunicipality?.(sectionId) ?? '';
   const createdAt = cuestionario.created_at ?? new Date().toISOString();
   const updatedAt = cuestionario.updated_at ?? createdAt;
+  const currentUser = authStore.getUser();
+  const interviewerName =
+    currentUser && currentUser.id === cuestionario.IdUser
+      ? currentUser.nombre
+      : '';
 
   return {
     id: String(cuestionario.IdCuestionario),
@@ -295,7 +301,7 @@ export function mapApiCuestionarioToSurveyRecord(
     updatedAt,
     startedAt: createdAt,
     finishedAt: updatedAt,
-    interviewerName: '',
+    interviewerName,
     sectionPriorityLabel: municipality
       ? `Seccion ${sectionId} · ${municipality}`
       : `Seccion ${sectionId}`,
